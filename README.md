@@ -62,7 +62,7 @@ A: This is expected behavior due to current partial MTK support.
 
 - Original author: `xhs:5699990012`
 - KPW4 improvements: `nuku`
-- Further optimizations & MTK support (v3.x): **Echoes**
+- Further optimizations & MTK support (v3.x): **Echoes、小红薯6809667F、斯普特尼克的漫游**
 
 ## License
 
