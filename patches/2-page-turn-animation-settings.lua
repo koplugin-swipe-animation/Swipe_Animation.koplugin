@@ -45,7 +45,7 @@ local ok, err = pcall(function()
         local screen_h = Screen.bb:getHeight()
         local is_landscape = screen_w > screen_h
         if is_landscape then
-            return 8
+            return 10
         end
 
         local rotation_mode = Screen:getRotationMode()
