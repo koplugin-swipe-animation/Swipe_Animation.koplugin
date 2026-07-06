@@ -1,3 +1,5 @@
+**简体中文** | [English](./README.md)
+
 # Swipe_Animation
 
 KOReader 软件翻页动画补丁（擦除渐显效果）

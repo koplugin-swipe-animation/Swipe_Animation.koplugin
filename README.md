@@ -1,3 +1,5 @@
+[简体中文](./README%20_zh.md) | **English**
+
 # Swipe_Animation
 
 A software page-turn animation patch for KOReader that provides a smooth "wipe / erase and reveal" effect.
