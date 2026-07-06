@@ -1301,7 +1301,7 @@ function UIManager:_repaint()
         Screen.swipe_animations = false
         self.refresh_counted = true
 
-        -- ==================== Integration with page-turn-animation-settings plugin ====================
+        -- ==================== Integration with swipe-animation-settings plugin ====================
         -- Support custom per-orientation animation frame delay set by the external plugin
 
         -- Default animation frame delays (used when no custom value is set by user):
