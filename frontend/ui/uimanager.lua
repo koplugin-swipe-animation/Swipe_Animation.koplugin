@@ -1290,101 +1290,106 @@ function UIManager:_repaint()
         self:_refresh("partial")
     end
 
-    -- Execute a software swipe animation when requested on non-MTK devices.
+-- Execute a software swipe animation when requested on non-MTK devices.
     local software_animate = false
     if Screen.swipe_animations then
-        local is_mtk = Screen.device and Screen.device.isMTK and Screen.device:isMTK()
-        if not is_mtk then
-            software_animate = true
-        end
+        software_animate = true
     end
 
     if software_animate then
+        -- Disable hardware swipe animations and take over refresh counting manually
         Screen.swipe_animations = false
         self.refresh_counted = true
 
+        -- ==================== Integration with page-turn-animation-settings plugin ====================
+        -- Support custom per-orientation animation frame delay set by the external plugin
+
+        -- Default animation frame delays (used when no custom value is set by user):
+        --   Landscape:          10ms  
+        --   Portrait (normal):  22ms 
+        --   Portrait (rotated): 16ms  
+        local screen_w = Screen.bb:getWidth()
+        local screen_h = Screen.bb:getHeight()
+        local is_landscape = screen_w > screen_h
+
+        local function getSwipeAnimationDelayMs()
+            -- Check user configured delay from plugin settings
+            if is_landscape then
+                local delay = tonumber(G_reader_settings:readSetting("swipe_animation_delay_ms_horizontal")) or 0
+                if delay > 0 then return delay end
+            else
+                local delay = tonumber(G_reader_settings:readSetting("swipe_animation_delay_ms_vertical")) or 0
+                if delay > 0 then return delay end
+            end
+            -- Fallback to automatic default values
+            if is_landscape then
+                return 10
+            else
+                local rotation_mode = Screen:getRotationMode()
+                local native_rotation_mode = Screen.native_rotation_mode or Screen.DEVICE_ROTATED_UPRIGHT
+                local is_opposite_portrait = bit.band(rotation_mode - native_rotation_mode, 3) == 2
+                return is_opposite_portrait and 16 or 22
+            end
+        end
+
+        local delay_us = getSwipeAnimationDelayMs() * 1000  -- convert ms to μs
+
         local saved_bb = Screen.saved_bb
         Screen.saved_bb = nil
+
         if saved_bb then
             local new_bb = Screen.bb:copy()
 
-            local rotation_mode = Screen:getRotationMode()
-            local native_rotation_mode = Screen.native_rotation_mode or Screen.DEVICE_ROTATED_UPRIGHT
-            local is_opposite_portrait = bit.band(rotation_mode - native_rotation_mode, 3) == 2
-            local screen_w = Screen.bb:getWidth()
-            local screen_h = Screen.bb:getHeight()
-            local is_landscape = screen_w > screen_h
-
-            -- Keep the existing animation profile for upright mode.
-            -- The portrait orientation opposite from the device's native startup
-            -- portrait uses a different generation strategy:
-            -- restore the previous page once, then only draw the newly revealed strip.
+            -- Use fewer animation steps and shorter delay in landscape mode for better visual feel
             local steps = is_landscape and 6 or 8
-            local delay_us = is_landscape and 8000 or (is_opposite_portrait and 16000 or 22000)
-            local delay_setting_key = is_landscape and "swipe_animation_delay_ms_horizontal" or "swipe_animation_delay_ms_vertical"
-            local configured_delay_ms = tonumber(G_reader_settings:readSetting(delay_setting_key)) or 0
-            if configured_delay_ms <= 0 then
-                configured_delay_ms = tonumber(G_reader_settings:readSetting("swipe_animation_delay_ms")) or 0
-            end
-            if configured_delay_ms > 0 then
-                delay_us = configured_delay_ms * 1000
-            end
 
             local swipe_forward = Screen.swipe_forward
             local prev_dx = 0
 
-            if is_landscape or is_opposite_portrait then
-                Screen.bb:blitFrom(saved_bb, 0, 0, 0, 0, screen_w, screen_h)
-            end
+            -- Draw the previous page as the starting background
+            Screen.bb:blitFrom(saved_bb, 0, 0, 0, 0, screen_w, screen_h)
 
+            -- Animate page turn by progressively revealing vertical strips of the new page
             for i = 1, steps do
                 local progress = i / steps
                 local dx = math.floor(screen_w * progress)
                 local strip_w = dx - prev_dx
 
                 if strip_w > 0 then
-                    if is_landscape or is_opposite_portrait then
-                        if swipe_forward then
-                            local strip_x = screen_w - dx
-                            Screen.bb:blitFrom(new_bb, strip_x, 0, strip_x, 0, strip_w, screen_h)
-                            Screen:refreshUI(strip_x, 0, strip_w, screen_h)
-                        else
-                            Screen.bb:blitFrom(new_bb, prev_dx, 0, prev_dx, 0, strip_w, screen_h)
-                            Screen:refreshUI(prev_dx, 0, strip_w, screen_h)
-                        end
-                    elseif swipe_forward then
-                        Screen.bb:blitFrom(saved_bb, 0, 0, 0, 0, screen_w - dx, screen_h)
-                        Screen.bb:blitFrom(new_bb, screen_w - dx, 0, screen_w - dx, 0, dx, screen_h)
-                        Screen:refreshUI(screen_w - dx, 0, strip_w, screen_h)
+                    local strip_x
+                    if swipe_forward then
+                        -- Swipe forward (right to left): reveal from the right edge
+                        strip_x = screen_w - dx
                     else
-                        Screen.bb:blitFrom(new_bb, 0, 0, 0, 0, dx, screen_h)
-                        Screen.bb:blitFrom(saved_bb, dx, 0, dx, 0, screen_w - dx, screen_h)
-                        Screen:refreshUI(prev_dx, 0, strip_w, screen_h)
+                        -- Swipe backward (left to right): reveal from the left edge
+                        strip_x = prev_dx
                     end
+
+                    -- Copy a vertical strip from the new page onto the current screen buffer
+                    Screen.bb:blitFrom(new_bb, strip_x, 0, strip_x, 0, strip_w, screen_h)
+                    Screen:refreshUI(strip_x, 0, strip_w, screen_h)
                 end
 
                 prev_dx = dx
 
+                -- Control animation speed with microsecond delay between strips
                 if ffi and ffi.C and ffi.C.usleep then
                     ffi.C.usleep(delay_us)
                 end
             end
 
-            -- Skip the animation-specific full-refresh counter in night mode
-            -- to avoid an extra flash during dark reading.
-            if not G_reader_settings:isTrue("night_mode")
-                or G_reader_settings:isTrue("swipe_animation_night_full_refresh") then
-                if self.FULL_REFRESH_COUNT and self.FULL_REFRESH_COUNT > 0 then
-                    if not self._swipe_full_refresh_count then
-                        self._swipe_full_refresh_count = 0
-                    end
+            -- Independent full refresh counter
+            -- Periodically triggers a full screen refresh according to the user's
+            -- FULL_REFRESH_COUNT setting (from E-ink options) to reduce ghosting
+            if self.FULL_REFRESH_COUNT and self.FULL_REFRESH_COUNT > 0 then
+                if not self._swipe_full_refresh_count then
+                    self._swipe_full_refresh_count = 0
+                end
+                self._swipe_full_refresh_count = self._swipe_full_refresh_count + 1
 
-                    self._swipe_full_refresh_count = self._swipe_full_refresh_count + 1
-
-                    if self._swipe_full_refresh_count >= self.FULL_REFRESH_COUNT then
-                        Screen:refreshFull(0, 0, screen_w, screen_h)
-                        self._swipe_full_refresh_count = 0
-                    end
+                if self._swipe_full_refresh_count >= self.FULL_REFRESH_COUNT then
+                    Screen:refreshFull(0, 0, screen_w, screen_h)
+                    self._swipe_full_refresh_count = 0
                 end
             end
 
@@ -1393,6 +1398,7 @@ function UIManager:_repaint()
             saved_bb:free()
         end
     end
+    
     -- execute refreshes:
     for _, refresh in ipairs(self._refresh_stack) do
         -- Honor dithering hints from *anywhere* in the dirty stack
