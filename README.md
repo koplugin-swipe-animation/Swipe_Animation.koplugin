@@ -1,76 +1,79 @@
-**简体中文** | [English](./README_en.md)
+[简体中文](./README%20_zh.md) | **English**
 
 # Swipe_Animation
 
-KOReader 软件翻页动画补丁（擦除渐显效果）
+A software page-turn animation patch for KOReader that provides a smooth "wipe / erase and reveal" effect.
 
-为 KOReader 提供流畅的「擦除渐显」（wipe）翻页动画效果，特别适合没有硬件翻页动画支持的设备。
+This patch brings fluid page turn animations to devices that lack native hardware support (or as an enhanced experience on supported devices).
 
-## 功能特点（v3.6 版本）
+## Features (v3.6)
 
-- 翻页动画更流畅、速度更快
-- 减少翻页过程中的屏幕抖动
-- 可自定义完全刷新速率，控制残影
-- 支持全方向滑动翻页
-- 优化夜间模式体验
-- 新增 MTK 设备支持（Kobo、Kindle 2022 及以上）
-  - **注意**：Kindle 2022 及以上机型目前仅支持单向翻页动画
-- **v3.6 新增**：支持 PDF、DjVu、CBZ 等固定排版格式的翻页动画
+- Smoother and faster page turn animation
+- Reduced screen jitter during transitions
+- Customizable full refresh rate to control ghosting
+- Supports swipes in all directions
+- Improved experience in night mode
+- Added support for MTK devices (Kobo and Kindle 2022+)
+  - **Note**: On Kindle 2022 and later, animation support is partial (only one direction works)
+- **New in v3.6**: Page-turn animation support for fixed-layout formats (PDF, DjVu, CBZ)
 
-本项目基于小红书原作者 `xhs:5699990012` 的作品，由 nuku 改进，再经 **Echoes** 进一步优化。
+This project is based on the original work by `xhs:5699990012`, further improved by `nuku`, and optimized by **Echoes**.
 
-## 安装方法
+## Installation
 
-### 准备工作
-- 设备支持 USB 连接电脑访问文件
-- 建议使用最新版 KOReader
+### Kindle / Kobo Devices (Linux Version) Steps
 
-### 安装步骤
+1. Connect your device to a computer via USB.
+2. **Backup** your existing `koreader` folder first.
+3. Copy the `ffi`, `frontend`, and `patches` folders from the root of your downloaded (and unzipped) folder into your device's `koreader` directory, overwriting existing files.
+   - Typical path: `D:\.adds\koreader\` (path varies by device)
+   - **Special Note**: If your device already natively supports hardware page-turn animations and you do *not* want to use this patch's software wipe animation, but only want to enable native hardware page-turn animations for PDF files, you can choose to **only copy the `patches` folder** to your device's `koreader` directory.
+4. Safely eject the device and restart KOReader.
+5. Enable the animation:
+   - Open any document → Tap the top menu → **Settings (gear icon)** → **Taps and gestures** → **Page turns**
+   - Check **"Page turn animation"**
 
-1. 用 USB 线连接设备到电脑。
-2. **先备份** 原有的 `koreader` 文件夹。
-3. 将本仓库中的 `ffi`、`frontend` 以及 `patches` 文件夹，**覆盖复制** 到设备上的 `koreader` 目录中。
-   - 常见路径：`D:\.adds\koreader\`
-   - **特别说明**：如果您的设备原本就支持原生翻页动画，且您不希望使用本补丁的软件擦除动画，而仅希望为 PDF 文件开启设备原生的硬件级翻页动画，您可以选择**只将 `patches` 文件夹**复制到设备上的 `koreader/` 目录下即可。
-4. 安全弹出设备后重启 KOReader。
-5. 开启动画：
-   - 打开任意书籍 → 点击顶部菜单 → **设置（齿轮图标）** → **动作手势** → **翻页**
-   - 勾选 **「翻页动画」**
+### Android E-ink Devices (Android Version) Steps
 
-## 设置建议
+Suitable for Boox, Meebook, Hanvon, Xiaomi, and other devices running KOReader for Android:
+1. Connect your Android device.
+2. Copy the **`patches` folder inside the `android_version` folder** of your downloaded folder, and **overwrite copy** it directly into your device's `koreader` directory (if there is no `patches` folder in your `koreader` directory, it will be automatically created; if it exists, choose to merge/overwrite).
+3. Restart KOReader for the changes to take effect.
 
-如果翻页时仍有黑白闪烁：
-- 进入 **设置 → 屏幕 → 墨水屏设置 → 完全刷新速率**
-- 调高数值以减少全刷频率。
+## Recommended Settings
 
-## 支持设备
+If pages flash black/white on every turn:
+- Go to **Settings → Screen → E-ink settings → Full refresh rate**
+- Increase the value to reduce flashing frequency.
 
-- **已充分测试**：Kobo 系列，以及 2022 年之前的 Kindle 设备（包括 KO 和 KPW 系列）
-- **理论可用**：大多数运行 KOReader 的 Linux 墨水屏设备
-- **部分支持**：Kindle 2022 及以上（仅单向动画）
-- **暂不支持**：大多数安卓墨水屏设备
+## Supported Devices
 
-## 常见问题
+- **Well tested**: Kobo series and pre-2022 Kindle devices (including KO and KPW series)
+- **Should work**: Most Linux-based e-readers running KOReader
+- **Partial support**: Kindle 2022 and newer (MTK) — animation only works in one direction
+- **Android Support**: Supports most Android e-ink devices running KOReader (e.g., Boox, Meebook, Xiaomi, etc. using the Android Version steps above)
 
-**Q：出现“翻页动画”选项但没有效果？**  
-A：请先更新 KOReader 到最新版本，再重新安装本补丁。
+## Troubleshooting
 
-**Q：每翻一页都黑白闪烁？**  
-A：在 **设置 → 屏幕 → 墨水屏设置 → 完全刷新速率** 中调高数值。
+**Q: The "Page turn animation" option shows up but does nothing?**  
+A: Update KOReader to the latest version, then reinstall the patch.
 
-**Q：Kindle 2022 只支持单向动画？**  
-A：属于当前 MTK 支持不完整导致的正常现象。
+**Q: Every page still has a black/white flash?**  
+A: Adjust **Full refresh rate** in **Settings → Screen → E-ink settings**.
 
-## 版本与贡献
+**Q: Kindle 2022 only has animation in one direction?**  
+A: This is expected behavior due to current partial MTK support.
 
-- 原作者：`xhs:5699990012`
-- nuku 改进版
-- v3.x 版本进一步优化与 MTK 支持：`Echoes`、`小红薯6809667F`、`斯普特尼克的漫游`
+## Credits
 
-## 许可证
+- Original author: `xhs:5699990012`
+- KPW4 improvements: `nuku`
+- Further optimizations & MTK support (v3.x): **Echoes、小红薯6809667F、斯普特尼克的漫游**
 
-本项目遵循 KOReader 相同许可证（GPLv3）。
+## License
+
+This patch follows the same license as KOReader (GPLv3).
 
 ---
 
-**重要提醒**：安装前请务必备份 `koreader` 文件夹。
+**Warning**: Always back up your `koreader` folder before installing any patches.
