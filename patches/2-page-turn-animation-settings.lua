@@ -155,22 +155,6 @@ local ok, err = pcall(function()
     local function buildSwipeAnimationSubItems()
         return {
             {
-                text = "夜间模式下允许完全刷新",
-                enabled_func = function()
-                    return G_reader_settings:isTrue("swipe_animations")
-                end,
-                checked_func = function()
-                    return G_reader_settings:isTrue("swipe_animation_night_full_refresh")
-                end,
-                callback = function()
-                    G_reader_settings:flipNilOrFalse("swipe_animation_night_full_refresh")
-                end,
-                help_text = [[
-启用后，夜间模式下的翻页动画仍然可以按完全刷新频率执行全刷。
-
-禁用后，夜间模式下的翻页动画会跳过这类额外全刷，以减少闪屏。]],
-            },
-            {
                 text_func = function()
                     local configured = getConfiguredSwipeAnimationDelayMs()
                     local _, orientation_label = getSwipeAnimationDelaySettingKey()
@@ -191,22 +175,6 @@ local ok, err = pcall(function()
 
 直接输入毫秒数即可。竖屏和横屏会分别记住各自的数值。未自定义时，会显示当前方向使用的默认值。]],
             },
-            {
-                text = "夜间模式下禁用动画",
-                enabled_func = function()
-                    return G_reader_settings:isTrue("swipe_animations")
-                end,
-                checked_func = function()
-                    return G_reader_settings:isTrue("swipe_animation_disable_in_night_mode")
-                end,
-                callback = function()
-                    G_reader_settings:flipNilOrFalse("swipe_animation_disable_in_night_mode")
-                end,
-                help_text = [[
-启用后，只要夜间模式处于开启状态，就不执行翻页动画。
-
-禁用后，夜间模式下仍然可以使用翻页动画。]],
-            },
         }
     end
 
@@ -217,9 +185,7 @@ local ok, err = pcall(function()
                 return G_reader_settings:isTrue("swipe_animations")
             end,
             help_text = [[
-集中调整翻页动画相关选项。
-
-启用翻页动画后，可在这里调整夜间模式和速度相关设置。]],
+调整翻页动画的速度（帧延迟设置）。]],
             sub_item_table = buildSwipeAnimationSubItems(),
         }
     end
