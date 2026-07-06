@@ -10,12 +10,12 @@ local ok, err = pcall(function()
     local UIManager = require("ui/uimanager")
     local T = require("ffi/util").template
 
-    local MENU_KEY = "page_turn_animation_settings"
+    local MENU_KEY = "swipe_animation_settings"   
 
-    if ReaderMenu._page_turn_animation_settings_patch_applied then
+    if ReaderMenu._swipe_animation_settings_patch_applied then  
         return
     end
-    ReaderMenu._page_turn_animation_settings_patch_applied = true
+    ReaderMenu._swipe_animation_settings_patch_applied = true
 
     local function ensureMenuKey(order_table)
         if type(order_table) ~= "table" then
@@ -180,12 +180,12 @@ local ok, err = pcall(function()
 
     local function buildSettingsMenu()
         return {
-            text = "翻页动画设置",
+            text = "翻页动画设置",        
             enabled_func = function()
                 return G_reader_settings:isTrue("swipe_animations")
             end,
             help_text = [[
-调整翻页动画的速度（帧延迟设置）。]],
+调整翻页动画的速度（帧延迟设置）。]],   
             sub_item_table = buildSwipeAnimationSubItems(),
         }
     end
@@ -196,13 +196,13 @@ local ok, err = pcall(function()
         end
 
         local existing = menu_items[MENU_KEY]
-        if type(existing) == "table" and existing._page_turn_animation_settings_patch_item then
+        if type(existing) == "table" and existing._swipe_animation_settings_patch_item then
             existing.sub_item_table = buildSwipeAnimationSubItems()
             return true
         end
 
         local item = buildSettingsMenu()
-        item._page_turn_animation_settings_patch_item = true
+        item._swipe_animation_settings_patch_item = true
         menu_items[MENU_KEY] = item
         return true
     end
@@ -215,5 +215,5 @@ local ok, err = pcall(function()
 end)
 
 if not ok then
-    require("logger").warn("[PageTurnAnimationSettingsPatch] failed:", err)
+    require("logger").warn("[SwipeAnimationSettingsPatch] failed:", err)
 end
