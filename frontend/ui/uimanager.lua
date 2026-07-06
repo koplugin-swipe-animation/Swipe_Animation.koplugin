@@ -1293,8 +1293,11 @@ function UIManager:_repaint()
     -- Execute a software swipe animation when requested on non-MTK devices.
     local software_animate = false
     if Screen.swipe_animations then
+        local fb = require("ffi/framebuffer")
+        if Screen.setSwipeAnimations == fb.setSwipeAnimations then
             software_animate = true
         end
+    end
 
 	 if software_animate then
 		-- Disable hardware swipe animations and take over refresh counting manually
