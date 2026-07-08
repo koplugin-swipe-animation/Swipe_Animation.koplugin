@@ -10,12 +10,27 @@ local ok, err = pcall(function()
     local UIManager = require("ui/uimanager")
     local T = require("ffi/util").template
 
-    local MENU_KEY = "swipe_animation_settings"   
+    local MENU_KEY = "swipe_animation_settings"
 
-    if ReaderMenu._swipe_animation_settings_patch_applied then  
+    if ReaderMenu._swipe_animation_settings_patch_applied then
         return
     end
     ReaderMenu._swipe_animation_settings_patch_applied = true
+
+    -- One-time legacy setting migration (runs only once when patch loads)
+    do
+        local legacy_delay_ms = tonumber(G_reader_settings:readSetting("swipe_animation_delay_ms")) or 0
+        if legacy_delay_ms > 0 then
+            if (tonumber(G_reader_settings:readSetting("swipe_animation_delay_ms_vertical")) or 0) <= 0 then
+                G_reader_settings:saveSetting("swipe_animation_delay_ms_vertical", legacy_delay_ms)
+            end
+            if (tonumber(G_reader_settings:readSetting("swipe_animation_delay_ms_horizontal")) or 0) <= 0 then
+                G_reader_settings:saveSetting("swipe_animation_delay_ms_horizontal", legacy_delay_ms)
+            end
+            G_reader_settings:delSetting("swipe_animation_delay_ms")
+            G_reader_settings:saveSetting("swipe_animation_legacy_migrated", true)
+        end
+    end
 
     local function ensureMenuKey(order_table)
         if type(order_table) ~= "table" then
@@ -40,22 +55,17 @@ local ok, err = pcall(function()
 
     ensureMenuKey(reader_menu_order.taps_and_gestures)
 
-    local function getAutomaticSwipeAnimationDelayMs()
-        local screen_w = Screen.bb:getWidth()
-        local screen_h = Screen.bb:getHeight()
-        local is_landscape = screen_w > screen_h
-        if is_landscape then
-            return 10
-        end
-
-        local rotation_mode = Screen:getRotationMode()
-        local native_rotation_mode = Screen.native_rotation_mode or Screen.DEVICE_ROTATED_UPRIGHT
-        local is_opposite_portrait = bit.band(rotation_mode - native_rotation_mode, 3) == 2
-        return is_opposite_portrait and 16 or 22
-    end
-
     local function isLandscapeScreen()
         return Screen.bb:getWidth() > Screen.bb:getHeight()
+    end
+
+    -- Simplified: Landscape = 10ms, Portrait (all rotations) = 20ms
+    local function getAutomaticSwipeAnimationDelayMs()
+        if isLandscapeScreen() then
+            return 10
+        else
+            return 20
+        end
     end
 
     local function getSwipeAnimationDelaySettingKey()
@@ -66,7 +76,7 @@ local ok, err = pcall(function()
     end
 
     local function getConfiguredSwipeAnimationDelayMs()
-        local key = getSwipeAnimationDelaySettingKey()
+        local key, _ = getSwipeAnimationDelaySettingKey()
         local delay_ms = tonumber(G_reader_settings:readSetting(key)) or 0
         if delay_ms <= 0 then
             delay_ms = tonumber(G_reader_settings:readSetting("swipe_animation_delay_ms")) or 0
@@ -78,21 +88,30 @@ local ok, err = pcall(function()
     end
 
     local function saveConfiguredSwipeAnimationDelayMs(delay_ms)
-        local key = getSwipeAnimationDelaySettingKey()
-        local legacy_delay_ms = tonumber(G_reader_settings:readSetting("swipe_animation_delay_ms")) or 0
-        if legacy_delay_ms > 0 then
-            if (tonumber(G_reader_settings:readSetting("swipe_animation_delay_ms_vertical")) or 0) <= 0 then
-                G_reader_settings:saveSetting("swipe_animation_delay_ms_vertical", legacy_delay_ms)
-            end
-            if (tonumber(G_reader_settings:readSetting("swipe_animation_delay_ms_horizontal")) or 0) <= 0 then
-                G_reader_settings:saveSetting("swipe_animation_delay_ms_horizontal", legacy_delay_ms)
-            end
-            G_reader_settings:delSetting("swipe_animation_delay_ms")
-        end
+        local key, _ = getSwipeAnimationDelaySettingKey()
         if delay_ms and delay_ms > 0 then
             G_reader_settings:saveSetting(key, delay_ms)
         else
             G_reader_settings:delSetting(key)
+        end
+    end
+
+    -- ==================== Refresh mode for software swipe animation ====================
+    -- Allows user to choose between "ui", "partial", "fast" for the strip refreshes
+    -- in the software page-turn animation (implemented in UIManager:_repaint).
+    local function getSwipeAnimationRefreshMode()
+        local mode = G_reader_settings:readSetting("swipe_animation_refresh_mode")
+        if mode == "partial" or mode == "fast" then
+            return mode
+        end
+        return "ui"
+    end
+
+    local function saveSwipeAnimationRefreshMode(mode)
+        if mode == "ui" then
+            G_reader_settings:delSetting("swipe_animation_refresh_mode")
+        elseif mode == "partial" or mode == "fast" then
+            G_reader_settings:saveSetting("swipe_animation_refresh_mode", mode)
         end
     end
 
@@ -154,6 +173,60 @@ local ok, err = pcall(function()
 
     local function buildSwipeAnimationSubItems()
         return {
+            -- NEW: Refresh mode chooser for the animation strips (put above delay as requested)
+            {
+                text = "翻页动画刷新模式",
+                enabled_func = function()
+                    return G_reader_settings:isTrue("swipe_animations")
+                end,
+                help_text = [[
+选择软件翻页动画中，每一小条画面更新时使用的刷新类型。
+
+• UI刷新（默认）：平衡画质与速度，适合大多数情况。
+• Partial刷新：对纯文字/白底内容优化，残影控制较好。
+• Fast刷新：速度最快，适合追求流畅度但可接受较多残影的场景。
+
+更改后立即生效。]],
+                sub_item_table = {
+                    {
+                        text = "UI刷新（默认，推荐）",
+                        checked_func = function()
+                            return getSwipeAnimationRefreshMode() == "ui"
+                        end,
+                        callback = function(touchmenu_instance)
+                            saveSwipeAnimationRefreshMode("ui")
+                            if touchmenu_instance then
+                                touchmenu_instance:updateItems()
+                            end
+                        end,
+                    },
+                    {
+                        text = "Partial刷新（文字优化）",
+                        checked_func = function()
+                            return getSwipeAnimationRefreshMode() == "partial"
+                        end,
+                        callback = function(touchmenu_instance)
+                            saveSwipeAnimationRefreshMode("partial")
+                            if touchmenu_instance then
+                                touchmenu_instance:updateItems()
+                            end
+                        end,
+                    },
+                    {
+                        text = "Fast刷新（最快，易残影）",
+                        checked_func = function()
+                            return getSwipeAnimationRefreshMode() == "fast"
+                        end,
+                        callback = function(touchmenu_instance)
+                            saveSwipeAnimationRefreshMode("fast")
+                            if touchmenu_instance then
+                                touchmenu_instance:updateItems()
+                            end
+                        end,
+                    },
+                },
+            },
+            -- Delay setting (existing, now below refresh mode)
             {
                 text_func = function()
                     local configured = getConfiguredSwipeAnimationDelayMs()
@@ -180,12 +253,14 @@ local ok, err = pcall(function()
 
     local function buildSettingsMenu()
         return {
-            text = "翻页动画设置",        
+            text = "翻页动画设置",
             enabled_func = function()
                 return G_reader_settings:isTrue("swipe_animations")
             end,
             help_text = [[
-调整翻页动画的速度（帧延迟设置）。]],   
+调整软件翻页动画的速度（帧延迟）和画面更新刷新模式（UI / Partial / Fast）。
+
+刷新模式直接影响动画期间每条画面的更新质量与残影表现。]],
             sub_item_table = buildSwipeAnimationSubItems(),
         }
     end
