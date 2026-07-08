@@ -42,7 +42,7 @@ If pages flash black/white on every turn:
 
 ## Supported Devices
 
-- **Well tested**: Kobo devices
+- **Well tested**: Kobo series and pre-2022 Kindle devices (including KO and KPW series)
 - **Should work**: Most Linux-based e-readers running KOReader
 - **Partial support**: Kindle 2022 and newer (MTK) — animation only works in one direction
 - **Not supported**: Most Android e-ink devices
