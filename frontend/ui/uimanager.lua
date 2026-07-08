@@ -1305,34 +1305,34 @@ function UIManager:_repaint()
         -- Support custom per-orientation animation frame delay set by the external plugin
 
         -- Default animation frame delays (used when no custom value is set by user):
-        --   Landscape:          10ms  
-        --   Portrait (normal):  22ms 
-        --   Portrait (rotated): 16ms  
+        --   Landscape: 10ms
+        --   Portrait:  20ms
         local screen_w = Screen.bb:getWidth()
         local screen_h = Screen.bb:getHeight()
         local is_landscape = screen_w > screen_h
 
-        local function getSwipeAnimationDelayMs()
-            -- Check user configured delay from plugin settings
-            if is_landscape then
-                local delay = tonumber(G_reader_settings:readSetting("swipe_animation_delay_ms_horizontal")) or 0
-                if delay > 0 then return delay end
-            else
-                local delay = tonumber(G_reader_settings:readSetting("swipe_animation_delay_ms_vertical")) or 0
-                if delay > 0 then return delay end
-            end
-            -- Fallback to automatic default values
-            if is_landscape then
-                return 10
-            else
-                local rotation_mode = Screen:getRotationMode()
-                local native_rotation_mode = Screen.native_rotation_mode or Screen.DEVICE_ROTATED_UPRIGHT
-                local is_opposite_portrait = bit.band(rotation_mode - native_rotation_mode, 3) == 2
-                return is_opposite_portrait and 16 or 22
-            end
+        local delay_ms = 0
+        if is_landscape then
+            delay_ms = tonumber(G_reader_settings:readSetting("swipe_animation_delay_ms_horizontal")) or 0
+        else
+            delay_ms = tonumber(G_reader_settings:readSetting("swipe_animation_delay_ms_vertical")) or 0
+        end
+        if delay_ms <= 0 then
+            delay_ms = is_landscape and 10 or 20
+        end
+        local delay_us = delay_ms * 1000
+
+        -- ==================== Refresh mode selection (from swipe-animation-settings plugin) ====================
+        -- Allow user to choose "ui", "partial" or "fast" for the per-strip refreshes.
+        -- This trades off between visual quality / ghosting and animation fluidity.
+        local anim_refresh_mode = G_reader_settings:readSetting("swipe_animation_refresh_mode") or "ui"
+        local refresh_fn = refresh_methods[anim_refresh_mode] or refresh_methods["ui"]
+        if not refresh_fn then
+            refresh_fn = Screen.refreshUI
         end
 
-        local delay_us = getSwipeAnimationDelayMs() * 1000  -- convert ms to μs
+        -- Hoisted for slight efficiency in the animation loop
+        local usleep = ffi and ffi.C and ffi.C.usleep
 
         local saved_bb = Screen.saved_bb
         Screen.saved_bb = nil
@@ -1340,7 +1340,7 @@ function UIManager:_repaint()
         if saved_bb then
             local new_bb = Screen.bb:copy()
 
-            -- Use fewer animation steps and shorter delay in landscape mode for better visual feel
+            -- Use fewer animation steps in landscape mode for better visual feel
             local steps = is_landscape and 6 or 8
 
             local swipe_forward = Screen.swipe_forward
@@ -1349,7 +1349,9 @@ function UIManager:_repaint()
             -- Draw the previous page as the starting background
             Screen.bb:blitFrom(saved_bb, 0, 0, 0, 0, screen_w, screen_h)
 
-            -- Animate page turn by progressively revealing vertical strips of the new page
+            -- Animate page turn by progressively revealing vertical strips of the new page.
+            -- NOTE: swipe_forward direction logic is essential (not redundant) for correct
+            -- visual effect on forward vs backward page turns and cannot be removed.
             for i = 1, steps do
                 local progress = i / steps
                 local dx = math.floor(screen_w * progress)
@@ -1367,20 +1369,21 @@ function UIManager:_repaint()
 
                     -- Copy a vertical strip from the new page onto the current screen buffer
                     Screen.bb:blitFrom(new_bb, strip_x, 0, strip_x, 0, strip_w, screen_h)
-                    Screen:refreshUI(strip_x, 0, strip_w, screen_h)
+                    refresh_fn(Screen, strip_x, 0, strip_w, screen_h)
                 end
 
                 prev_dx = dx
 
                 -- Control animation speed with microsecond delay between strips
-                if ffi and ffi.C and ffi.C.usleep then
-                    ffi.C.usleep(delay_us)
+                if usleep then
+                    usleep(delay_us)
                 end
             end
 
-            -- Independent full refresh counter
+            -- Independent full refresh counter (required here because we bypassed
+            -- the normal partial->full promotion counting in this software animation path).
             -- Periodically triggers a full screen refresh according to the user's
-            -- FULL_REFRESH_COUNT setting (from E-ink options) to reduce ghosting
+            -- FULL_REFRESH_COUNT setting (from E-ink options) to reduce ghosting.
             if self.FULL_REFRESH_COUNT and self.FULL_REFRESH_COUNT > 0 then
                 if not self._swipe_full_refresh_count then
                     self._swipe_full_refresh_count = 0
