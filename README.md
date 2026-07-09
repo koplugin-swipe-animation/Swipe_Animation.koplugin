@@ -10,7 +10,7 @@ This patch brings fluid page turn animations to devices that lack native hardwar
 
 - Smoother and faster page turn animation
 - Reduced screen jitter during transitions
-- Customizable full refresh rate to control ghosting
+- Customizable full refresh rate to control ghosting（New chapter refresh and image page refresh features are currently unavailable）
 - Supports swipes in all directions
 - Improved experience in night mode
 - Added support for MTK devices (Kobo and Kindle 2022+)
@@ -24,7 +24,7 @@ This patch brings fluid page turn animations to devices that lack native hardwar
 
 1. Connect your device to a computer via USB.
 2. **Backup** your existing `koreader` folder first.
-3. Copy the `ffi`, `frontend`, and `patches` folders from the root of your downloaded (and unzipped) folder into your device's `koreader` directory, overwriting existing files.
+3. Copy the `ffi`, `frontend`, and `patches` folders from the root of your downloaded (and unzipped) folder into your device's `koreader` directory, overwriting existing files(Note: Do not delete the original folder).
    - Typical path: `D:\.adds\koreader\` (path varies by device)
    - **Special Note**: If your device already natively supports hardware page-turn animations and you do *not* want to use this patch's software wipe animation, but only want to enable native hardware page-turn animations for PDF files, you can choose to **only copy the `patches` folder** to your device's `koreader` directory.
 4. Safely eject the device and restart KOReader.
