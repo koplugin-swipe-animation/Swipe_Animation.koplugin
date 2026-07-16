@@ -67,13 +67,11 @@ Common causes include:
 2. You are using macOS to copy the files. Restore the original files first, delete the corresponding original files manually, and then copy the patched files again.
 3. The installation was not performed correctly. Restore your backup and repeat the installation steps carefully.
 
----
 
 ### Q: The "Page Turn Animation" option appears, but nothing happens.
 
 Update KOReader to the latest version and reinstall the patch.
 
----
 
 ### Q: The screen flashes black and white on every page turn.
 
@@ -81,7 +79,6 @@ Adjust the **Full Refresh Interval** under:
 
 **Settings → Screen → E-Ink Settings → Full Refresh Interval**
 
----
 
 ## Credits
 
