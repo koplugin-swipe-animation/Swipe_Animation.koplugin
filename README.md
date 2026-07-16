@@ -39,7 +39,7 @@ This patch brings fluid page turn animations to devices that lack native hardwar
 6. *(Optional)* Adjust the animation delay:
    * Open **Settings (⚙) → Gesture Manager → Page Turn Animation Settings**.
    * Configure separate animation delays (ms) for portrait and landscape mode.
----
+
 ### Android E-Ink Devices
 Applicable to Android versions of KOReader running on devices such as **BOOX, iReader, Hanvon, Xiaomi**, and other Android-based e-readers.
 1. Connect your Android device.
