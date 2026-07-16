@@ -6,76 +6,95 @@ A software page-turn animation patch for KOReader that provides a smooth "wipe /
 
 This patch brings fluid page turn animations to devices that lack native hardware support (or as an enhanced experience on supported devices).
 
-## Features (v3.5.1)
+## Features
 
-- Smoother and faster page turn animation
-- Reduced screen jitter during transitions
-- Customizable full refresh rate to control ghosting（New chapter refresh and image page refresh features are currently unavailable）
-- Supports swipes in all directions
-- Improved experience in night mode
-- Added support for MTK devices (Kobo and Kindle 2022+)
-  - **Note**: On Kindle 2022 and later, animation support is partial (only one direction works)
-- **New**: Page-turn animation support for fixed-layout formats (PDF, DjVu, CBZ)
-- **New**: Custom page-turn delay settings (in ms) for horizontal and vertical screens (accessible via **Settings (gear icon) -> Taps and gestures -> Page turn animation settings**)
-
+* Smooth and faster page-turn animations
+* Reduces screen flickering during page turns
+* Customizable full refresh interval to control ghosting
+  *(Automatic refresh on chapter changes and image pages is currently not supported.)*
+* Supports page-turn gestures in all directions
+* Improved experience in Night Mode
+* **New:** MTK device support (Kobo, Kindle 2022 and newer)
+* **New:** Page-turn animation support for fixed-layout formats such as PDF, DjVu, and CBZ
+* **New:** Adjustable animation delay (in milliseconds) for both portrait and landscape orientations through
+  **Settings (⚙) → Gesture Manager → Page Turn Animation Settings**, eliminating the need to edit Lua files manually
+* **New:** Customizable refresh mode with three options: **UI**, **Partial**, and **Fast**
+---
 ## Installation
 
-### Kindle / Kobo Devices (Linux Version) Steps
+> **Important:** Back up your `koreader` directory before installing.
 
-1. Connect your device to a computer via USB.
-2. **Backup** your existing `koreader` folder first.
-3. Copy the `ffi`, `frontend`, and `patches` folders from the root of your downloaded (and unzipped) folder into your device's `koreader` directory, overwriting existing files(Note: Do not delete the original folder).
-   - Typical path: `D:\.adds\koreader\` (path varies by device)
-   - **Special Note**: If your device already natively supports hardware page-turn animations and you do *not* want to use this patch's software wipe animation, but only want to enable native hardware page-turn animations for PDF files, you can choose to **only copy the `patches` folder** to your device's `koreader` directory.
+### Kindle / Kobo (Linux Version)
+1. Connect your device to your computer via USB.
+2. **Back up** your existing `koreader` folder.
+3. Copy the `ffi`, `frontend`, and `patches` folders from the extracted package into your device's `koreader` directory, and **merge/overwrite** the existing folders.
+   **Do not delete the original folders.**
+   * Typical path: `D:\.adds\koreader\`
+   * **Note:** If your device already supports native hardware page-turn animations and you only want to enable native animations for PDF files, simply copy the `patches` folder into the `koreader` directory instead of installing the full patch.
 4. Safely eject the device and restart KOReader.
 5. Enable the animation:
-   - Open any document -> Tap the top menu -> **Settings (gear icon)** -> **Taps and gestures** -> **Page turns**
-   - Check **"Page turn animation"**
-6. Configure the delay (Optional):
-   - Go to **Settings (gear icon) -> Taps and gestures -> Page turn animation settings** to set custom delay values (in ms) for horizontal/vertical screens.
-
-### Android E-ink Devices (Android Version) Steps
-
-Suitable for Boox, Meebook, Hanvon, Xiaomi, and other devices running KOReader for Android:
+   * Open any book.
+   * Go to **Settings (⚙) → Gesture Manager → Page Turning**.
+   * Enable **Page Turn Animation**.
+6. *(Optional)* Adjust the animation delay:
+   * Open **Settings (⚙) → Gesture Manager → Page Turn Animation Settings**.
+   * Configure separate animation delays (ms) for portrait and landscape mode.
+---
+### Android E-Ink Devices
+Applicable to Android versions of KOReader running on devices such as **BOOX, iReader, Hanvon, Xiaomi**, and other Android-based e-readers.
 1. Connect your Android device.
-2. Copy the **`patches` folder inside the `android_version` folder** of your downloaded folder, and **overwrite copy** it directly into your device's `koreader` directory (if there is no `patches` folder in your `koreader` directory, it will be automatically created; if it exists, choose to merge/overwrite).
-3. Restart KOReader for the changes to take effect.
-
-## Recommended Settings
-
-* **Avoid screen flashes (black/white flash)**:
-  - Go to **Settings -> Screen -> E-ink settings -> Full refresh rate**, and increase the value to reduce flashing frequency.
-* **Android animation stutter/lag**:
-  - If you experience lag or stutter on Android devices after enabling the page-turn animation, please set your device's refresh mode (or system-level e-ink settings) to a faster mode (e.g., switch from **"High Definition"** mode to **"Fast / Speed / A2 / Quick"** refresh mode).
+2. From the extracted package, open the **Android Version** (`android_version`) folder.
+3. Copy the `patches` folder into your device's `koreader` directory and merge it with the existing files.
+   * If the `patches` folder does not exist, it will be created automatically.
+4. Restart KOReader.
+---
 
 ## Supported Devices
-
-- **Well tested**: Kobo series and pre-2022 Kindle devices (including KO and KPW series)
-- **Should work**: Most Linux-based e-readers running KOReader
-- **Partial support**: Kindle 2022 and newer (MTK) — animation only works in one direction
-- **Android Support**: Supports most Android e-ink devices running KOReader (e.g., Boox, Meebook, Xiaomi, etc. using the Android Version steps above)
-
-## Troubleshooting
-
-**Q: The "Page turn animation" option shows up but does nothing?**  
-A: Update KOReader to the latest version, then reinstall the patch.
-
-**Q: Every page still has a black/white flash?**  
-A: Adjust **Full refresh rate** in **Settings -> Screen -> E-ink settings**.
-
-**Q: Kindle 2022 only has animation in one direction?**  
-A: This is expected behavior due to current partial MTK support.
-
-## Credits
-
-- Original author: `xhs:5699990012`
-- KPW4 improvements: `nuku`
-- Further optimizations & MTK support (v3.x): **Echoes、小红薯6809667F、斯普特尼克的漫游**
-
-## License
-
-This patch follows the same license as KOReader (GPLv3).
+* **Fully tested:** Kobo devices, Kindle devices (including KV, KO, and KPW series), and most Linux-based e-ink devices running KOReader.
+* **Android:** Android devices are **currently not supported**, as the animation performance is not satisfactory on the Android platform.
 
 ---
 
-**Warning**: Always back up your `koreader` folder before installing any patches.
+## FAQ
+
+### Q: KOReader crashes after installing the patch.
+
+Restore the original files from your backup.
+
+Common causes include:
+
+1. Your KOReader version is outdated. Update KOReader to the latest version and reinstall the patch.
+2. You are using macOS to copy the files. Restore the original files first, delete the corresponding original files manually, and then copy the patched files again.
+3. The installation was not performed correctly. Restore your backup and repeat the installation steps carefully.
+
+---
+
+### Q: The "Page Turn Animation" option appears, but nothing happens.
+
+Update KOReader to the latest version and reinstall the patch.
+
+---
+
+### Q: The screen flashes black and white on every page turn.
+
+Adjust the **Full Refresh Interval** under:
+
+**Settings → Screen → E-Ink Settings → Full Refresh Interval**
+
+---
+
+## Credits
+
+* Original author: `xhs:5699990012`
+* Improved version: **nuku**
+* v3.x optimization and MTK support:
+
+  * **Echoes**
+  * **小红薯6809667F**
+  * **斯普特尼克的漫游**
+
+---
+
+## License
+
+This project is licensed under **GPLv3**, following the same license as KOReader.
