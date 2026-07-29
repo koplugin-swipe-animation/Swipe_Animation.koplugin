@@ -1456,7 +1456,7 @@ function UIManager:_repaint()
             saved_bb:free()
         end
     end
-    
+
     -- execute refreshes:
     for _, refresh in ipairs(self._refresh_stack) do
         -- Honor dithering hints from *anywhere* in the dirty stack
