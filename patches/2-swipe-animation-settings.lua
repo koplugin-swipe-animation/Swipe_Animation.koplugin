@@ -106,22 +106,37 @@ local ok, err = pcall(function()
             G_reader_settings:delSetting(key)
         end
     end
+    -- ==================== Mild global refresh for the independent counter ====================
+    -- When enabled, the periodic clearing refresh (triggered by the independent
+    -- counter) uses a partial refresh instead of a true full refresh.
+    -- The page-turn animation is always skipped on the clearing page.
+    local function isMildGlobalRefreshEnabled()
+        return G_reader_settings:isTrue("swipe_animation_mild_global_refresh")
+    end
 
+    local function toggleMildGlobalRefresh()
+        local enabled = not isMildGlobalRefreshEnabled()
+        if enabled then
+            G_reader_settings:saveSetting("swipe_animation_mild_global_refresh", true)
+        else
+            G_reader_settings:delSetting("swipe_animation_mild_global_refresh")
+        end
+    end
     -- ==================== Refresh mode for software swipe animation ====================
-    -- Allows user to choose between "ui", "partial", "fast" for the strip refreshes
+    -- Allows user to choose between "ui", "fast" for the strip refreshes
     -- in the software page-turn animation (implemented in UIManager:_repaint).
     local function getSwipeAnimationRefreshMode()
         local mode = G_reader_settings:readSetting("swipe_animation_refresh_mode")
-        if mode == "partial" or mode == "fast" then
+        if mode == "fast" then
             return mode
         end
         return "ui"
     end
-
+    
     local function saveSwipeAnimationRefreshMode(mode)
         if mode == "ui" then
             G_reader_settings:delSetting("swipe_animation_refresh_mode")
-        elseif mode == "partial" or mode == "fast" then
+        elseif mode == "fast" then
             G_reader_settings:saveSetting("swipe_animation_refresh_mode", mode)
         end
     end
@@ -184,7 +199,7 @@ local ok, err = pcall(function()
 
     local function buildSwipeAnimationSubItems()
         return {
-            -- NEW: Refresh mode chooser for the animation strips (put above delay as requested)
+            -- Refresh mode chooser
             {
                 text = "翻页动画刷新模式",
                 enabled_func = function()
@@ -194,7 +209,6 @@ local ok, err = pcall(function()
 选择软件翻页动画中，每一小条画面更新时使用的刷新类型。
 
 • UI刷新（默认）：平衡画质与速度，适合大多数情况。
-• Partial刷新：对纯文字/白底内容优化，残影控制较好。
 • Fast刷新：速度最快，适合追求流畅度但可接受较多残影的场景。
 
 更改后立即生效。]],
@@ -206,18 +220,6 @@ local ok, err = pcall(function()
                         end,
                         callback = function(touchmenu_instance)
                             saveSwipeAnimationRefreshMode("ui")
-                            if touchmenu_instance then
-                                touchmenu_instance:updateItems()
-                            end
-                        end,
-                    },
-                    {
-                        text = "Partial刷新（文字优化）",
-                        checked_func = function()
-                            return getSwipeAnimationRefreshMode() == "partial"
-                        end,
-                        callback = function(touchmenu_instance)
-                            saveSwipeAnimationRefreshMode("partial")
                             if touchmenu_instance then
                                 touchmenu_instance:updateItems()
                             end
@@ -237,7 +239,7 @@ local ok, err = pcall(function()
                     },
                 },
             },
-            -- Delay setting (existing, now below refresh mode)
+            -- Delay setting 
             {
                 text_func = function()
                     local configured = getConfiguredSwipeAnimationDelayMs()
@@ -259,6 +261,26 @@ local ok, err = pcall(function()
 
 直接输入毫秒数即可。竖屏和横屏会分别记住各自的数值。未自定义时，会显示当前方向使用的默认值。]],
             },
+            -- Clearing page mode chooser 
+            {
+                text = "轻度全局刷新",
+                enabled_func = function()
+                    return G_reader_settings:isTrue("swipe_animations")
+                end,
+                checked_func = function()
+                    return isMildGlobalRefreshEnabled()
+                end,
+                callback = function(touchmenu_instance)
+                    toggleMildGlobalRefresh()
+                    if touchmenu_instance then
+                        touchmenu_instance:updateItems()
+                    end
+                end,
+                help_text = [[
+• 勾选：使用 Partial 刷新（适用于纯文字内容）
+
+• 未勾选：使用 Full 刷新（适用于图文内容）]],
+            },
         }
     end
 
@@ -269,7 +291,7 @@ local ok, err = pcall(function()
                 return G_reader_settings:isTrue("swipe_animations")
             end,
             help_text = [[
-调整软件翻页动画的速度（帧延迟）和画面更新刷新模式（UI / Partial / Fast）。
+调整软件翻页动画的速度（帧延迟）和画面更新刷新模式（UI / Fast）。
 
 刷新模式直接影响动画期间每条画面的更新质量与残影表现。]],
             sub_item_table = buildSwipeAnimationSubItems(),

@@ -1294,7 +1294,7 @@ function UIManager:_repaint()
         self:_refresh("partial")
     end
 
--- Execute a software swipe animation when requested on non-MTK devices.
+    -- Execute a software swipe animation when requested on non-MTK devices.
     local software_animate = false
     if Screen.swipe_animations then
         software_animate = true
@@ -1305,48 +1305,67 @@ function UIManager:_repaint()
         Screen.swipe_animations = false
         self.refresh_counted = true
 
-        -- ==================== Integration with swipe-animation-settings plugin ====================
-        -- Support custom per-orientation animation frame delay set by the external plugin
-
-        -- Default animation frame delays (used when no custom value is set by user):
-        --   Landscape: 10ms
-        --   Portrait:  20ms
         local screen_w = Screen.bb:getWidth()
         local screen_h = Screen.bb:getHeight()
-        local is_landscape = screen_w > screen_h
 
-        local delay_ms = 0
-        if is_landscape then
-            delay_ms = tonumber(G_reader_settings:readSetting("swipe_animation_delay_ms_horizontal")) or 0
-        else
-            delay_ms = tonumber(G_reader_settings:readSetting("swipe_animation_delay_ms_vertical")) or 0
+        -- Independent full refresh counter (moved up so we can skip the animation
+        -- entirely when a clearing refresh is due). Required because we bypassed
+        -- the normal partial→full promotion counting in this software animation path.
+        -- Periodically triggers a full/partial screen refresh according to the user's
+        -- FULL_REFRESH_COUNT setting (from E-ink options) to reduce ghosting.
+        local do_clearing = false
+        if self.FULL_REFRESH_COUNT and self.FULL_REFRESH_COUNT > 0 then
+            self._swipe_full_refresh_count = (self._swipe_full_refresh_count or 0) + 1
+            if self._swipe_full_refresh_count >= self.FULL_REFRESH_COUNT then
+                do_clearing = true
+                self._swipe_full_refresh_count = 0
+            end
         end
-        if delay_ms <= 0 then
-            delay_ms = is_landscape and 10 or 20
-        end
-        local delay_us = delay_ms * 1000
-
-        -- ==================== Refresh mode selection (from swipe-animation-settings plugin) ====================
-        -- Allow user to choose "ui", "partial" or "fast" for the per-strip refreshes.
-        -- This trades off between visual quality / ghosting and animation fluidity.
-        local anim_refresh_mode = G_reader_settings:readSetting("swipe_animation_refresh_mode") or "ui"
-        local refresh_fn = refresh_methods[anim_refresh_mode] or refresh_methods["ui"]
-        if not refresh_fn then
-            refresh_fn = Screen.refreshUI
-        end
-
-        -- Hoisted for slight efficiency in the animation loop
-        local usleep = ffi and ffi.C and ffi.C.usleep
 
         local saved_bb = Screen.saved_bb
         Screen.saved_bb = nil
 
-        if saved_bb then
+        if do_clearing then
+            -- Clearing page: skip the wipe animation and just issue the selected
+            -- refresh mode. When "mild global refresh" is enabled we use partial,
+            -- otherwise a true full refresh.
+            if G_reader_settings:isTrue("swipe_animation_mild_global_refresh") then
+                Screen:refreshPartial(0, 0, screen_w, screen_h)
+            else
+                Screen:refreshFull(0, 0, screen_w, screen_h)
+            end
+            if saved_bb then
+                saved_bb:free()
+            end
+            self._refresh_stack = {}
+            self.refresh_count = 0
+        elseif saved_bb then
+            -- ==================== Normal software swipe animation path ====================
             local new_bb = Screen.bb:copy()
+
+            -- Support custom per-orientation animation frame delay set by the external plugin.
+            -- Default animation frame delays (used when no custom value is set by user):
+            --   Landscape: 10ms
+            --   Portrait:  20ms
+            local is_landscape = screen_w > screen_h
+            local delay_ms = is_landscape
+                and (tonumber(G_reader_settings:readSetting("swipe_animation_delay_ms_horizontal")) or 0)
+                or  (tonumber(G_reader_settings:readSetting("swipe_animation_delay_ms_vertical")) or 0)
+            if delay_ms <= 0 then
+                delay_ms = is_landscape and 10 or 20
+            end
+            local delay_us = delay_ms * 1000
+
+            -- Allow user to choose "ui" or "fast" for the per-strip refreshes.
+            -- This trades off between visual quality / ghosting and animation fluidity.
+            local anim_refresh_mode = G_reader_settings:readSetting("swipe_animation_refresh_mode") or "ui"
+            local refresh_fn = refresh_methods[anim_refresh_mode] or refresh_methods.ui or Screen.refreshUI
+
+            -- Hoisted for slight efficiency in the animation loop
+            local usleep = ffi and ffi.C and ffi.C.usleep
 
             -- Use fewer animation steps in landscape mode for better visual feel
             local steps = is_landscape and 6 or 8
-
             local swipe_forward = Screen.swipe_forward
             local prev_dx = 0
 
@@ -1360,94 +1379,69 @@ function UIManager:_repaint()
                 local progress = i / steps
                 local dx = math.floor(screen_w * progress)
                 local strip_w = dx - prev_dx
-
                 if strip_w > 0 then
-                    local strip_x
-                    if swipe_forward then
-                        -- Swipe forward (right to left): reveal from the right edge
-                        strip_x = screen_w - dx
-                    else
-                        -- Swipe backward (left to right): reveal from the left edge
-                        strip_x = prev_dx
-                    end
-
+                    local strip_x = swipe_forward and (screen_w - dx) or prev_dx
                     -- Copy a vertical strip from the new page onto the current screen buffer
                     Screen.bb:blitFrom(new_bb, strip_x, 0, strip_x, 0, strip_w, screen_h)
                     refresh_fn(Screen, strip_x, 0, strip_w, screen_h)
                 end
-
                 prev_dx = dx
-
                 -- Control animation speed with microsecond delay between strips
                 if usleep then
                     usleep(delay_us)
                 end
             end
-
-            -- Independent full refresh counter (required here because we bypassed
-            -- the normal partial->full promotion counting in this software animation path).
-            -- Periodically triggers a full screen refresh according to the user's
-            -- FULL_REFRESH_COUNT setting (from E-ink options) to reduce ghosting.
-            if self.FULL_REFRESH_COUNT and self.FULL_REFRESH_COUNT > 0 then
-                if not self._swipe_full_refresh_count then
-                    self._swipe_full_refresh_count = 0
-                end
-                self._swipe_full_refresh_count = self._swipe_full_refresh_count + 1
-
-                if self._swipe_full_refresh_count >= self.FULL_REFRESH_COUNT then
-                    Screen:refreshFull(0, 0, screen_w, screen_h)
-                    self._swipe_full_refresh_count = 0
-                end
-            end
+            -- Final full-screen refresh using the same mode as the animation strips
+            refresh_fn(Screen, 0, 0, screen_w, screen_h)
 			
-		-- ==================== Restore original KOReader full-refresh behavior ====================
-        -- The software animation path bypasses the normal partial→full promotion logic.
-        -- Re-apply the original conditions that force a full refresh on:
-        --   1. pages with significant image coverage (refresh_on_pages_with_images)
-        --   2. chapter boundaries (refresh_on_chapter_boundaries / FULL_REFRESH_COUNT == -1)
-        local need_full = false
-        local readerui = require("apps/reader/readerui")
-        local instance = readerui and readerui.instance
+            -- ==================== Restore original KOReader full-refresh behavior ====================
+            -- The software animation path bypasses the normal partial→full promotion logic.
+            -- Re-apply the original conditions that force a full refresh on:
+            --   1. pages with significant image coverage (refresh_on_pages_with_images)
+            --   2. chapter boundaries (refresh_on_chapter_boundaries / FULL_REFRESH_COUNT == -1)
+            local need_full = false
+            local readerui = require("apps/reader/readerui")
+            local instance = readerui and readerui.instance
 
-        if instance then
-            -- Image pages: mirror the exact check performed in ReaderView:paintTo
-            local view = instance.view
-            if view and view.img_coverage and view.img_coverage >= 0.075 then
-                if G_reader_settings:nilOrTrue("refresh_on_pages_with_images") then
-                    need_full = true
-                end
-            end
-
-            -- Chapter boundaries
-            if not need_full then
-                local flash_on_chapter = G_reader_settings:isTrue("refresh_on_chapter_boundaries")
-                -- Also honor the "Every chapter" setting (FULL_REFRESH_COUNT == -1)
-                if not flash_on_chapter and self.FULL_REFRESH_COUNT == -1 then
-                    flash_on_chapter = true
+            if instance then
+                -- Image pages: mirror the exact check performed in ReaderView:paintTo
+                local view = instance.view
+                if view and view.img_coverage and view.img_coverage >= 0.075 then
+                    if G_reader_settings:nilOrTrue("refresh_on_pages_with_images") then
+                        need_full = true
+                    end
                 end
 
-                if flash_on_chapter then
-                    local toc = instance.toc
-                    local paging = instance.paging
-                    local current_page = paging and paging.current_page
+                -- Chapter boundaries
+                if not need_full then
+                    local flash_on_chapter = G_reader_settings:isTrue("refresh_on_chapter_boundaries")
+                    -- Also honor the "Every chapter" setting (FULL_REFRESH_COUNT == -1)
+                    if not flash_on_chapter and self.FULL_REFRESH_COUNT == -1 then
+                        flash_on_chapter = true
+                    end
 
-                    if toc and current_page and toc:isChapterStart(current_page) then
-                        -- Honor the original "except on the second page of a new chapter" option
-                        local no_second = G_reader_settings:isTrue("no_refresh_on_second_chapter_page")
-                        if not (no_second and current_page > 1 and toc:isChapterStart(current_page - 1)) then
-                            need_full = true
+                    if flash_on_chapter then
+                        local toc = instance.toc
+                        local paging = instance.paging
+                        local current_page = paging and paging.current_page
+
+                        if toc and current_page and toc:isChapterStart(current_page) then
+                            -- Honor the original "except on the second page of a new chapter" option
+                            local no_second = G_reader_settings:isTrue("no_refresh_on_second_chapter_page")
+                            if not (no_second and current_page > 1 and toc:isChapterStart(current_page - 1)) then
+                                need_full = true
+                            end
                         end
                     end
                 end
             end
-        end
 
-        if need_full then
-            Screen:refreshFull(0, 0, screen_w, screen_h)
-            -- Reset counters to stay consistent with normal full-refresh behavior
-            self._swipe_full_refresh_count = 0
-            self.refresh_count = 0
-        end
+            if need_full then
+                Screen:refreshFull(0, 0, screen_w, screen_h)
+                -- Reset counters to stay consistent with normal full-refresh behavior
+                self._swipe_full_refresh_count = 0
+                self.refresh_count = 0
+            end
 
             self._refresh_stack = {}
             new_bb:free()
