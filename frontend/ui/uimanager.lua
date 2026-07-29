@@ -1341,7 +1341,18 @@ function UIManager:_repaint()
             self.refresh_count = 0
         elseif saved_bb then
             -- ==================== Normal software swipe animation path ====================
-            local new_bb = Screen.bb:copy()
+            -- Reuse a persistent temporary buffer to avoid allocating a full-screen
+            -- copy on every page turn (major cost on large e-ink panels).
+            local new_bb = self._swipe_temp_bb
+            if not new_bb or new_bb:getWidth() ~= screen_w or new_bb:getHeight() ~= screen_h then
+                if new_bb then
+                    new_bb:free()
+                end
+                new_bb = Screen.bb:copy()
+                self._swipe_temp_bb = new_bb
+            else
+                new_bb:blitFrom(Screen.bb, 0, 0, 0, 0, screen_w, screen_h)
+            end
 
             -- Support custom per-orientation animation frame delay set by the external plugin.
             -- Default animation frame delays (used when no custom value is set by user):
@@ -1386,14 +1397,12 @@ function UIManager:_repaint()
                     refresh_fn(Screen, strip_x, 0, strip_w, screen_h)
                 end
                 prev_dx = dx
-                -- Control animation speed with microsecond delay between strips
-                if usleep then
+                -- Skip sleep on the last frame so the animation ends more snappily
+                if i < steps and usleep then
                     usleep(delay_us)
                 end
             end
-            -- Final full-screen refresh using the same mode as the animation strips
-            refresh_fn(Screen, 0, 0, screen_w, screen_h)
-			
+
             -- ==================== Restore original KOReader full-refresh behavior ====================
             -- The software animation path bypasses the normal partial→full promotion logic.
             -- Re-apply the original conditions that force a full refresh on:
@@ -1444,7 +1453,6 @@ function UIManager:_repaint()
             end
 
             self._refresh_stack = {}
-            new_bb:free()
             saved_bb:free()
         end
     end
