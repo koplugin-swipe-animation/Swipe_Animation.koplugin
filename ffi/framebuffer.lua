@@ -537,10 +537,12 @@ function fb:setupDithering()
     end
 end
 
+-- To be overriden.
 function fb:setSwipeAnimations(enabled)
     self.swipe_animations = enabled
 end
 
+-- To be overriden.
 function fb:setSwipeDirection(direction)
     self.swipe_forward = direction
 end
@@ -577,7 +579,11 @@ function fb:shot(filename)
     if self.device:hasBGRFrameBuffer() then
         bgr = true
     end
-    self.bb:writePNG(filename, bgr)
+    if self.night_mode then
+        self.bb:copy():invert():writePNG(filename, bgr)
+    else
+        self.bb:writePNG(filename, bgr)
+    end
 end
 
 -- Clear the screen to white

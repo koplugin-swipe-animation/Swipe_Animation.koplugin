@@ -1,5 +1,16 @@
 local ok, err = pcall(function()
     local Device = require("device")
+
+    -- Force-enable software swipe animation capability
+    -- (replaces the need to overwrite frontend/device/generic/device.lua)
+    local orig_canDoSwipeAnimation = Device.canDoSwipeAnimation
+    Device.canDoSwipeAnimation = function(self)
+        if orig_canDoSwipeAnimation and orig_canDoSwipeAnimation(self) then
+            return true
+        end
+        return true
+    end
+
     if not Device:canDoSwipeAnimation() then
         return
     end
