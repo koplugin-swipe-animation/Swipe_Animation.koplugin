@@ -1399,6 +1399,55 @@ function UIManager:_repaint()
                     self._swipe_full_refresh_count = 0
                 end
             end
+			
+		-- ==================== Restore original KOReader full-refresh behavior ====================
+        -- The software animation path bypasses the normal partial→full promotion logic.
+        -- Re-apply the original conditions that force a full refresh on:
+        --   1. pages with significant image coverage (refresh_on_pages_with_images)
+        --   2. chapter boundaries (refresh_on_chapter_boundaries / FULL_REFRESH_COUNT == -1)
+        local need_full = false
+        local readerui = require("apps/reader/readerui")
+        local instance = readerui and readerui.instance
+
+        if instance then
+            -- Image pages: mirror the exact check performed in ReaderView:paintTo
+            local view = instance.view
+            if view and view.img_coverage and view.img_coverage >= 0.075 then
+                if G_reader_settings:nilOrTrue("refresh_on_pages_with_images") then
+                    need_full = true
+                end
+            end
+
+            -- Chapter boundaries
+            if not need_full then
+                local flash_on_chapter = G_reader_settings:isTrue("refresh_on_chapter_boundaries")
+                -- Also honor the "Every chapter" setting (FULL_REFRESH_COUNT == -1)
+                if not flash_on_chapter and self.FULL_REFRESH_COUNT == -1 then
+                    flash_on_chapter = true
+                end
+
+                if flash_on_chapter then
+                    local toc = instance.toc
+                    local paging = instance.paging
+                    local current_page = paging and paging.current_page
+
+                    if toc and current_page and toc:isChapterStart(current_page) then
+                        -- Honor the original "except on the second page of a new chapter" option
+                        local no_second = G_reader_settings:isTrue("no_refresh_on_second_chapter_page")
+                        if not (no_second and current_page > 1 and toc:isChapterStart(current_page - 1)) then
+                            need_full = true
+                        end
+                    end
+                end
+            end
+        end
+
+        if need_full then
+            Screen:refreshFull(0, 0, screen_w, screen_h)
+            -- Reset counters to stay consistent with normal full-refresh behavior
+            self._swipe_full_refresh_count = 0
+            self.refresh_count = 0
+        end
 
             self._refresh_stack = {}
             new_bb:free()
