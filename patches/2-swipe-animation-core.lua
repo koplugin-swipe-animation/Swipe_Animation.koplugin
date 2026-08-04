@@ -87,8 +87,6 @@ local ok, err = pcall(function()
     local ReaderUI = require("apps/reader/readerui")
     -- Shared animation tuning (single source of truth, defined in uimanager.lua)
     local UIManager = require("ui/uimanager")
-    -- For the frame delay sleep in the animation loop
-    local ffi = require("ffi")
 
     local SwipeFullRefresh = {}
 
@@ -217,12 +215,21 @@ local ok, err = pcall(function()
     end
 
     ---------------------------------------------------------------
-    -- 2.5 Run the software wipe animation
+    -- 2.5 Run the software wipe animation (non-blocking)
     --     Called from UIManager:_repaint (after the new page has been painted,
-    --     before the queued refreshes are executed). Handles the clearing /
-    --     forced-full decisions and the strip animation.
+    --     before the queued refreshes are executed). The strip animation runs
+    --     across UI ticks via UIManager:scheduleIn, so the main loop is never
+    --     blocked by the per-frame delay.
     ---------------------------------------------------------------
     function SwipeFullRefresh.runSwipeAnimation(self)
+        -- Cancel any animation still in flight from a previous page turn.
+        if self._swipe_state then
+            local stale = self._swipe_state
+            self._swipe_state = nil
+            if stale.new_bb then stale.new_bb:free() end
+            if stale.saved_bb then stale.saved_bb:free() end
+        end
+
         local screen_w = Screen.bb:getWidth()
         local screen_h = Screen.bb:getHeight()
 
@@ -290,14 +297,10 @@ local ok, err = pcall(function()
                 and (delay_defaults.landscape or 10)
                 or  (delay_defaults.portrait or 20)
         end
-        local delay_us = delay_ms * 1000
 
         -- Allow user to choose "ui" or "fast" for the per-strip refreshes.
         local anim_refresh_mode = G_reader_settings:readSetting("swipe_animation_refresh_mode") or "ui"
         local refresh_fn = anim_refresh_mode == "fast" and Screen.refreshFast or Screen.refreshUI
-
-        -- Hoisted for slight efficiency in the animation loop
-        local usleep = ffi and ffi.C and ffi.C.usleep
 
         -- Use fewer animation steps in landscape mode for better visual feel
         local step_defaults = (UIManager.swipe_animation_defaults or {}).steps or {}
@@ -315,31 +318,52 @@ local ok, err = pcall(function()
         -- Draw the previous page as the starting background
         Screen.bb:blitFrom(saved_bb, 0, 0, 0, 0, screen_w, screen_h)
 
-        -- Animate page turn by progressively revealing vertical strips of the new page.
-        for i = 1, steps do
-            local progress = i / steps
-            local dx = math.floor(screen_w * progress)
+        -- The strip refreshes below replace the queued refreshes for this repaint.
+        self._refresh_stack = {}
+
+        local state = {
+            new_bb = new_bb,
+            saved_bb = saved_bb,
+            steps = steps,
+            step = 0,
+            swipe_forward = swipe_forward,
+            refresh_fn = refresh_fn,
+            delay_sec = delay_ms / 1000,
+            screen_w = screen_w,
+            screen_h = screen_h,
+        }
+        self._swipe_state = state
+
+        -- Reveal one vertical strip per UI tick. If a newer page turn
+        -- superseded this animation, its buffers were already freed and the
+        -- stale ticks simply return.
+        local function animate_next()
+            if self._swipe_state ~= state then
+                return
+            end
+            state.step = state.step + 1
+            local dx = math.floor(state.screen_w * state.step / state.steps)
+            local prev_dx = math.floor(state.screen_w * (state.step - 1) / state.steps)
             local strip_w = dx - prev_dx
             if strip_w > 0 then
-                local strip_x = swipe_forward and (screen_w - dx) or prev_dx
+                local strip_x = state.swipe_forward and (state.screen_w - dx) or prev_dx
                 -- Copy a vertical strip from the new page onto the current screen buffer
-                Screen.bb:blitFrom(new_bb, strip_x, 0, strip_x, 0, strip_w, screen_h)
-                refresh_fn(Screen, strip_x, 0, strip_w, screen_h)
+                Screen.bb:blitFrom(state.new_bb, strip_x, 0, strip_x, 0, strip_w, state.screen_h)
+                state.refresh_fn(Screen, strip_x, 0, strip_w, state.screen_h)
             end
-            prev_dx = dx
-
-            -- Skip sleep on the last frame
-            if i < steps and usleep then
-                usleep(delay_us)
+            if state.step < state.steps then
+                UIManager:scheduleIn(state.delay_sec, animate_next)
+            else
+                -- Animation finished
+                self._swipe_state = nil
+                state.new_bb:free()
+                state.saved_bb:free()
             end
         end
 
-        -- Forced-full decision is no longer performed here on the animation path
-        -- (it was moved earlier; if needed, the animation is skipped entirely)
-
-        self._refresh_stack = {}
-        new_bb:free()
-        saved_bb:free()
+        -- Draw the first strip immediately; the rest run on scheduled ticks so
+        -- the UI thread stays responsive between frames.
+        animate_next()
     end
 
     _G.SwipeFullRefresh = SwipeFullRefresh
