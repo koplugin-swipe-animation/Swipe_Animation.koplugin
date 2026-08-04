@@ -2,13 +2,22 @@
 This module manages widgets.
 ]]
 
+-- NOTE: This file is a KOReader snapshot with the Swipe_Animation patch applied.
+-- Baseline: KOReader master @ ac1416d212157495711144e002e85995aa78eb0a (2026-08-04);
+-- last upstream change to this file: fa6b3cde8f71416d15596d9790e859d37b5e1be8 (2026-06-06).
+-- The only deviations from upstream are the software swipe animation hook in
+-- UIManager:_repaint() (the animation itself lives in
+-- patches/2-swipe-animation-core.lua) and the shared tuning table
+-- swipe_animation_defaults.
+-- After updating KOReader, re-merge this patch on top of the new upstream file
+-- instead of blindly overwriting it.
+
 local Device = require("device")
 local Event = require("ui/event")
 local Geom = require("ui/geometry")
 local dbg = require("dbg")
 local logger = require("logger")
 local ffiUtil = require("ffi/util")
-local ffi = require("ffi")
 local util = require("util")
 local time = require("ui/time")
 local _ = require("gettext")
@@ -24,6 +33,13 @@ local UIManager = {
         G_reader_settings:isTrue("night_mode") and G_reader_settings:readSetting("night_full_refresh_count") or G_reader_settings:readSetting("full_refresh_count") or DEFAULT_FULL_REFRESH_COUNT,
     refresh_count = 0,
     currently_scrolling = false,
+
+    -- Software swipe animation tuning, shared with
+    -- patches/2-swipe-animation-settings.lua (single source of truth).
+    swipe_animation_defaults = {
+        delay_ms = { landscape = 10, portrait = 20 },
+        steps = { landscape = 6, portrait = 8 },
+    },
 
     -- How long to wait between ZMQ wakeups: 50ms.
     ZMQ_TIMEOUT = 50 * 1000,
@@ -1294,118 +1310,22 @@ function UIManager:_repaint()
         self:_refresh("partial")
     end
 
-    -- Execute a software swipe animation when requested on non-MTK devices.
-    local software_animate = false
-    if Screen.swipe_animations then
-        software_animate = true
-    end
+    -- Execute the software wipe animation whenever the frontend requested one.
+    -- This runs on every device: the flag is cleared below so the underlying
+    -- (e.g., MTK) hardware animation is replaced by this software effect
+    -- instead of running on top of it.
+    local software_animate = Screen.swipe_animations
 
     if software_animate then
         -- Disable hardware swipe animations and take over refresh counting manually
         Screen.swipe_animations = false
         self.refresh_counted = true
 
-        local screen_w = Screen.bb:getWidth()
-        local screen_h = Screen.bb:getHeight()
-
-        -- Try to capture the previous page number before the animation decision
-        -- Note: by the time we reach _repaint, paging/toc may already reflect the new page,
-        -- so prev_page is not 100% reliable, but it is still better than not passing it
-        -- and letting shouldForceFull fall back to toc.pageno.
-        local prev_page = nil
-        do
-            local readerui = require("apps/reader/readerui")
-            local instance = readerui and readerui.instance
-            if instance then
-                if instance.toc then
-                    prev_page = instance.toc.pageno
-                end
-                if not prev_page then
-                    prev_page = (instance.paging and instance.paging.current_page)
-                             or (instance.rolling and instance.rolling.current_page)
-                end
-            end
-        end
-
-        -- ========== Full-refresh decision (early: skip the wipe animation
-        -- when a clearing or forced full refresh is needed) ==========
-        local do_clearing = SwipeFullRefresh.shouldDoClearing(self)
-        local need_force_full = false
-        if not do_clearing then
-            need_force_full = SwipeFullRefresh.shouldForceFullAfterAnimation(self, prev_page)
-        end
-
-        local saved_bb = Screen.saved_bb
-        Screen.saved_bb = nil
-
-        if do_clearing or need_force_full then
-            -- Clearing page / image page / chapter boundary:
-            -- skip the animation and perform the corresponding refresh directly
-            if need_force_full then
-                SwipeFullRefresh.forceFullAndReset(self, screen_w, screen_h)
-            else
-                SwipeFullRefresh.performClearing(self, screen_w, screen_h)
-            end
-            if saved_bb then
-                saved_bb:free()
-            end
-        elseif saved_bb then
-            -- ==================== Normal software swipe animation path ====================
-            local new_bb = Screen.bb:copy()
-
-            -- Support custom per-orientation animation frame delay set by the external plugin.
-            -- Default animation frame delays (used when no custom value is set by user):
-            -- Landscape: 10ms
-            -- Portrait: 20ms
-            local is_landscape = screen_w > screen_h
-            local delay_ms = is_landscape
-                and (tonumber(G_reader_settings:readSetting("swipe_animation_delay_ms_horizontal")) or 0)
-                or  (tonumber(G_reader_settings:readSetting("swipe_animation_delay_ms_vertical")) or 0)
-            if delay_ms <= 0 then
-                delay_ms = is_landscape and 10 or 20
-            end
-            local delay_us = delay_ms * 1000
-
-            -- Allow user to choose "ui" or "fast" for the per-strip refreshes.
-            local anim_refresh_mode = G_reader_settings:readSetting("swipe_animation_refresh_mode") or "ui"
-            local refresh_fn = refresh_methods[anim_refresh_mode] or refresh_methods.ui or Screen.refreshUI
-
-            -- Hoisted for slight efficiency in the animation loop
-            local usleep = ffi and ffi.C and ffi.C.usleep
-
-            -- Use fewer animation steps in landscape mode for better visual feel
-            local steps = is_landscape and 6 or 8
-            local swipe_forward = Screen.swipe_forward
-            local prev_dx = 0
-
-            -- Draw the previous page as the starting background
-            Screen.bb:blitFrom(saved_bb, 0, 0, 0, 0, screen_w, screen_h)
-
-            -- Animate page turn by progressively revealing vertical strips of the new page.
-            for i = 1, steps do
-                local progress = i / steps
-                local dx = math.floor(screen_w * progress)
-                local strip_w = dx - prev_dx
-                if strip_w > 0 then
-                    local strip_x = swipe_forward and (screen_w - dx) or prev_dx
-                    -- Copy a vertical strip from the new page onto the current screen buffer
-                    Screen.bb:blitFrom(new_bb, strip_x, 0, strip_x, 0, strip_w, screen_h)
-                    refresh_fn(Screen, strip_x, 0, strip_w, screen_h)
-                end
-                prev_dx = dx
-
-                -- Skip sleep on the last frame
-                if i < steps and usleep then
-                    usleep(delay_us)
-                end
-            end
-
-            -- Forced-full decision is no longer performed here on the animation path
-            -- (it was moved earlier; if needed, the animation is skipped entirely)
-
-            self._refresh_stack = {}
-            new_bb:free()
-            saved_bb:free()
+        -- The wipe animation and its full-refresh/clearing decisions live in
+        -- the startup patch module; if it failed to load, fall back to no
+        -- animation for this repaint.
+        if SwipeFullRefresh then
+            SwipeFullRefresh.runSwipeAnimation(self)
         end
     end
 
