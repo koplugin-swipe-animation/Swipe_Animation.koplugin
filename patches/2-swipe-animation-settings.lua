@@ -125,7 +125,6 @@ The refresh mode directly affects the quality and ghosting of each strip update 
                 G_reader_settings:saveSetting("swipe_animation_delay_ms_horizontal", legacy_delay_ms)
             end
             G_reader_settings:delSetting("swipe_animation_delay_ms")
-            G_reader_settings:saveSetting("swipe_animation_legacy_migrated", true)
         end
     end
 

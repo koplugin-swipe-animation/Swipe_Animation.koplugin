@@ -1324,8 +1324,8 @@ function UIManager:_repaint()
         -- The wipe animation and its full-refresh/clearing decisions live in
         -- the startup patch module; if it failed to load, fall back to no
         -- animation for this repaint.
-        if SwipeFullRefresh then
-            SwipeFullRefresh.runSwipeAnimation(self)
+        if SwipeAnimation then
+            SwipeAnimation.runSwipeAnimation(self)
         end
     end
 

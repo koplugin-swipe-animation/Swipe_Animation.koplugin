@@ -11,7 +11,7 @@
        the original method is the rotation-aware hardware ioctl setup, which
        we preserve, and we additionally store swipe_forward for the software
        animation.
-    2. the SwipeFullRefresh module: full-refresh / clearing decisions and the
+    2. the SwipeAnimation module: full-refresh / clearing decisions and the
        wipe animation itself (runSwipeAnimation), called from
        UIManager:_repaint after the new page is painted.
 
@@ -81,7 +81,7 @@ local ok, err = pcall(function()
         end
     end
 
-    -- ==================== 2. SwipeFullRefresh module ====================
+    -- ==================== 2. SwipeAnimation module ====================
     local logger = require("logger")
     -- Module-level cache to avoid repeated requires on the _repaint hot path
     local ReaderUI = require("apps/reader/readerui")
@@ -90,12 +90,12 @@ local ok, err = pcall(function()
     -- For the frame delay sleep in the animation loop
     local ffi = require("ffi")
 
-    local SwipeFullRefresh = {}
+    local SwipeAnimation = {}
 
     ---------------------------------------------------------------
     -- 2.1 Whether to skip the animation and perform a clearing refresh
     ---------------------------------------------------------------
-    function SwipeFullRefresh.shouldDoClearing(self)
+    function SwipeAnimation.shouldDoClearing(self)
         if not (self.FULL_REFRESH_COUNT and self.FULL_REFRESH_COUNT > 0) then
             return false
         end
@@ -112,15 +112,15 @@ local ok, err = pcall(function()
     ---------------------------------------------------------------
     -- 2.2 Perform the clearing refresh (supports mild global refresh)
     ---------------------------------------------------------------
-    function SwipeFullRefresh.performClearing(self, screen_w, screen_h)
+    function SwipeAnimation.performClearing(self, screen_w, screen_h)
         local mild = G_reader_settings:isTrue("swipe_animation_mild_global_refresh")
 
         if mild then
             Screen:refreshPartial(0, 0, screen_w, screen_h)
-            logger.dbg("SwipeFullRefresh: mild (partial) clearing refresh")
+            logger.dbg("SwipeAnimation: mild (partial) clearing refresh")
         else
             Screen:refreshFull(0, 0, screen_w, screen_h)
-            logger.dbg("SwipeFullRefresh: full clearing refresh")
+            logger.dbg("SwipeAnimation: full clearing refresh")
         end
 
         self.refresh_count = 0
@@ -132,7 +132,7 @@ local ok, err = pcall(function()
     --     Can be called before the animation; accurate prev_page is required
     --     to correctly detect forward/backward chapter boundaries
     ---------------------------------------------------------------
-    function SwipeFullRefresh.shouldForceFullAfterAnimation(self, prev_page)
+    function SwipeAnimation.shouldForceFullAfterAnimation(self, prev_page)
         local instance = ReaderUI.instance
         if not instance then
             return false
@@ -198,17 +198,17 @@ local ok, err = pcall(function()
     -- 2.4 Actually trigger the full refresh
     --     Supports mild global refresh, consistent with performClearing
     ---------------------------------------------------------------
-    function SwipeFullRefresh.forceFullAndReset(self, screen_w, screen_h)
+    function SwipeAnimation.forceFullAndReset(self, screen_w, screen_h)
         -- We are inside _repaint, so we must refresh directly;
         -- setDirty would be deferred to the next frame and become ineffective
         local mild = G_reader_settings:isTrue("swipe_animation_mild_global_refresh")
 
         if mild then
             Screen:refreshPartial(0, 0, screen_w, screen_h)
-            logger.dbg("SwipeFullRefresh: mild (partial) forced refresh (image/chapter)")
+            logger.dbg("SwipeAnimation: mild (partial) forced refresh (image/chapter)")
         else
             Screen:refreshFull(0, 0, screen_w, screen_h)
-            logger.dbg("SwipeFullRefresh: forced full refresh (image/chapter)")
+            logger.dbg("SwipeAnimation: forced full refresh (image/chapter)")
         end
 
         self._swipe_full_refresh_count = 0
@@ -222,7 +222,7 @@ local ok, err = pcall(function()
     --     before the queued refreshes are executed). Handles the clearing /
     --     forced-full decisions and the strip animation.
     ---------------------------------------------------------------
-    function SwipeFullRefresh.runSwipeAnimation(self)
+    function SwipeAnimation.runSwipeAnimation(self)
         local screen_w = Screen.bb:getWidth()
         local screen_h = Screen.bb:getHeight()
 
@@ -246,10 +246,10 @@ local ok, err = pcall(function()
 
         -- ========== Full-refresh decision (early: skip the wipe animation
         -- when a clearing or forced full refresh is needed) ==========
-        local do_clearing = SwipeFullRefresh.shouldDoClearing(self)
+        local do_clearing = SwipeAnimation.shouldDoClearing(self)
         local need_force_full = false
         if not do_clearing then
-            need_force_full = SwipeFullRefresh.shouldForceFullAfterAnimation(self, prev_page)
+            need_force_full = SwipeAnimation.shouldForceFullAfterAnimation(self, prev_page)
         end
 
         local saved_bb = Screen.saved_bb
@@ -259,9 +259,9 @@ local ok, err = pcall(function()
             -- Clearing page / image page / chapter boundary:
             -- skip the animation and perform the corresponding refresh directly
             if need_force_full then
-                SwipeFullRefresh.forceFullAndReset(self, screen_w, screen_h)
+                SwipeAnimation.forceFullAndReset(self, screen_w, screen_h)
             else
-                SwipeFullRefresh.performClearing(self, screen_w, screen_h)
+                SwipeAnimation.performClearing(self, screen_w, screen_h)
             end
             if saved_bb then
                 saved_bb:free()
@@ -342,7 +342,7 @@ local ok, err = pcall(function()
         saved_bb:free()
     end
 
-    _G.SwipeFullRefresh = SwipeFullRefresh
+    _G.SwipeAnimation = SwipeAnimation
 end)
 
 if not ok then
