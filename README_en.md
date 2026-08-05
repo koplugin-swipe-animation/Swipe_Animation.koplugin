@@ -30,7 +30,7 @@ This patch brings fluid page turn animations to devices that lack native hardwar
 3. Copy the `frontend` and `patches` folders from the extracted package into your device's `koreader` directory, and **merge/overwrite** the existing folders. No files under `ffi/` are overwritten.
    **Do not delete the original folders.**
    * Typical path: `D:\.adds\koreader\`
-   * **Note:** If your device already supports native hardware page-turn animations and you only want to enable native animations for PDF files, simply copy the `patches` folder into the `koreader` directory instead of installing the full patch.
+   * **Note:** If your device already supports native hardware page-turn animations and you only want to enable native animations for PDF files, simply copy `2-pdf-animation.lua` from the `patches` folder into the `koreader/patches/` directory instead of installing the full patch (KOReader 2026.07.1).
 4. Safely eject the device and restart KOReader.
 5. Enable the animation:
    * Open any book.
@@ -50,11 +50,6 @@ The bundled `frontend/ui/uimanager.lua` is a snapshot of:
 
 - KOReader master: `ac1416d2` (2026-08-04)
 
-Files under `ffi/` are not overwritten; all framebuffer-related behavior is
-provided by the patches in `patches/`.
-
-After updating KOReader, `uimanager.lua` may not match the new upstream code.
-Reinstall the patch (or re-merge the changes on top of the new KOReader) to avoid issues.
 ---
 
 ## Supported Devices
