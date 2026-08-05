@@ -343,28 +343,6 @@ local ok, err = pcall(function()
     end
 
     _G.SwipeAnimation = SwipeAnimation
-
-    -- ==================== 3. LuaJIT warm-up ====================
-    -- The animation code lives outside the always-hot UIManager:_repaint, so
-    -- its first real execution would pay a one-time compilation cost on the
-    -- first page turn. Force compilation now: before the first page turn
-    -- Screen.saved_bb is nil, so runSwipeAnimation returns early without
-    -- touching the screen (the dummy self keeps UIManager state untouched).
-    do
-        local warm_ok, warm_err = pcall(function()
-            if Screen.bb and Screen.saved_bb == nil then
-                local dummy = {}
-                for _ = 1, 64 do
-                    SwipeAnimation.runSwipeAnimation(dummy)
-                    SwipeAnimation.shouldDoClearing(dummy)
-                    SwipeAnimation.shouldForceFullAfterAnimation(dummy, nil)
-                end
-            end
-        end)
-        if not warm_ok then
-            logger.warn("SwipeAnimation: warm-up failed:", warm_err)
-        end
-    end
 end)
 
 if not ok then
