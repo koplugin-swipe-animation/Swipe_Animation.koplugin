@@ -22,6 +22,7 @@ local ok, err = pcall(function()
     local GetText = require("gettext")
     local interface_lang = G_reader_settings:readSetting("language") or ""
     local zh_ui = interface_lang:match("^zh") and true or false
+    local pt_BR_ui = interface_lang:match("^pt_BR") and true or false
 
     -- Built-in Chinese translations, used only while KOReader's l10n
     -- catalogs have no translation for a msgid yet.
@@ -90,6 +91,72 @@ The refresh mode directly affects the quality and ghosting of each strip update 
 
 刷新模式直接影响动画期间每条画面的更新质量与残影表现。]],
     }
+    local pt_BR_fallback = {
+        ["Animation frame delay"] = "Intervalo entre quadros da animação",
+        ["Cancel"] = "Cancelar",
+        ["Restore default"] = "Restaurar padrão",
+        ["Save"] = "Salvar",
+        ["Swipe animation refresh mode"] = "Modo de atualização da animação de deslizar",
+        ["UI refresh (default, recommended)"] = "Atualização da interface (padrão, recomendado)",
+        ["Fast refresh (fastest, more ghosting)"] = "Atualização rápida (mais veloz, mais ghosting)",
+        ["%1 animation frame delay: %2 ms"] = "%1 - intervalo entre quadros: %2 ms",
+        ["%1 animation frame delay: default %2 ms"] = "%1 - intervalo entre quadros: padrão (%2 ms)",
+        ["Mild global refresh"] = "Atualização global moderada",
+        ["Swipe animation settings"] = "Configurações da animação de deslizar",
+        ["Landscape"] = "Modo paisagem",
+        ["Portrait"] = "Modo retrato",
+        [ [[
+Enter the delay between animation frames, in milliseconds.
+
+Lower values are faster but may cause more ghosting.
+Higher values are slower but usually look cleaner.
+
+Current orientation: %1
+Current default: %2 ms]] ] = [[
+Insira o intervalo entre quadros da animação, em milissegundos.
+
+Valores menores são mais rápidos, mas podem gerar mais ghosting.
+Valores maiores são mais lentos, mas geralmente resultam em imagens mais limpas.
+
+Orientação atual: %1
+Padrão da orientação atual: %2 ms]],
+        [ [[
+Choose the refresh type used for each strip of the software swipe animation.
+
+• UI refresh (default): balanced quality and speed, suitable for most cases.
+• Fast refresh: fastest, best for smoothness when some ghosting is acceptable.
+
+Changes take effect immediately.]] ] = [[
+Escolha o tipo de atualização utilizado para cada segmento da animação de deslizar por software.
+
+• Atualização da interface (padrão): qualidade e velocidade balanceadas, apropriada para a maioria dos casos.
+• Atualização rápida: mais rápida, melhor para a suavização quando pouco ghosting é aceitável.
+
+As alterações são aplicadas imediatamente.]],
+        [ [[
+Adjust the pause between animation frames.
+
+Enter a value in milliseconds. Portrait and landscape remember their own values.
+When unset, the default for the current orientation is shown.]] ] = [[
+Ajusta a pausa entre quadros da animação.
+
+Insira um valor em milissegundos. Os modos retrato e paisagem memorizam seus respectivos valores. 
+Quando inalterado, o padrão para a orientação atual é exibido.]],
+        [ [[
+• Checked: use partial refresh (for text-only content)
+
+• Unchecked: use full refresh (for content with images)]] ] = [[
+• Marcado: utiliza atualização parcial (para conteúdos textuais)
+
+• Desmarcado: utiliza atualização total (para conteúdos com imagens)]],
+        [ [[
+Adjust the speed (frame delay) and refresh mode (UI / Fast) of the software swipe animation.
+
+The refresh mode directly affects the quality and ghosting of each strip update during the animation.]] ] = [[
+Ajusta a velocidade (intervalo de quadros) e o modo de atualização (Interface / Rápido) da animação de deslizar por software.
+
+O modo de atualização impacta diretamente na qualidade e no ghosting de cada faixa de atualização durante a animação.]],
+    }
 
     local function _(msgid)
         -- Prefer a catalog translation once these strings are in l10n.
@@ -102,6 +169,13 @@ The refresh mode directly affects the quality and ghosting of each strip update 
             local zh = zh_fallback[msgid]
             if zh then
                 return zh
+            end
+        end
+        -- Built-in fallback for Portuguese (Brazil) interfaces.
+        if pt_BR_ui then
+            local pt_BR= pt_BR_fallback[msgid]
+            if pt_BR then
+                return pt_BR
             end
         end
         return msgid
