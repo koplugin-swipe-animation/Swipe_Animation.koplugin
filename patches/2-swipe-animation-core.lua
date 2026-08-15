@@ -20,9 +20,6 @@
        the still-cold controller. Right after resume we issue a few invisible
        full-screen UI refreshes to warm the controller up, so the first page
        turn animates normally at full speed.
-    4. v4.1 + strip-loop rewrite only: snap interior cuts to
-       Screen.alignment_constraint (16 on Kobo MTK); UI-mode strips do not
-       usleep (Fast still uses the configured frame delay).
 
     Prefer original data sources, but trigger Screen:refreshFull / refreshPartial
     directly (because we are inside _repaint, where setDirty would be deferred
