@@ -347,18 +347,27 @@ local ok, err = pcall(function()
         -- Defaults come from UIManager.swipe_animation_defaults (single source of truth).
         local is_landscape = screen_w > screen_h
         local delay_defaults = (UIManager.swipe_animation_defaults or {}).delay_ms or {}
-        local delay_ms = is_landscape
-            and (tonumber(G_reader_settings:readSetting("swipe_animation_delay_ms_horizontal")) or 0)
-            or  (tonumber(G_reader_settings:readSetting("swipe_animation_delay_ms_vertical")) or 0)
-        if delay_ms <= 0 then
-            delay_ms = is_landscape
-                and (delay_defaults.landscape or 10)
-                or  (delay_defaults.portrait or 20)
-        end
-        local delay_us = delay_ms * 1000
-
-        -- Allow user to choose "ui" or "fast" for the per-strip refreshes.
         local anim_refresh_mode = G_reader_settings:readSetting("swipe_animation_refresh_mode") or "ui"
+        local delay_ms
+        if is_landscape then
+            delay_ms = tonumber(G_reader_settings:readSetting("swipe_animation_delay_ms_horizontal"))
+        else
+            delay_ms = tonumber(G_reader_settings:readSetting("swipe_animation_delay_ms_vertical"))
+        end
+        if delay_ms == nil then
+            delay_ms = tonumber(G_reader_settings:readSetting("swipe_animation_delay_ms"))
+        end
+        -- Unset: UI defaults to 0 (ioctl-paced). Fast keeps 10/20ms.
+        -- Explicit 0 also means no usleep.
+        if delay_ms == nil or delay_ms < 0 then
+            if anim_refresh_mode == "fast" then
+                delay_ms = is_landscape
+                    and (delay_defaults.landscape or 10)
+                    or  (delay_defaults.portrait or 20)
+            else
+                delay_ms = 0
+            end
+        end
 
         -- Hoisted for slight efficiency in the animation loop
         local usleep = ffi and ffi.C and ffi.C.usleep
@@ -400,8 +409,8 @@ local ok, err = pcall(function()
                 local refresh_fn = use_fast and Screen.refreshFast or Screen.refreshUI
                 refresh_fn(Screen, left, 0, strip_w, screen_h)
             end
-            if i < nslots and usleep and use_fast then
-                usleep(delay_us)
+            if i < nslots and usleep and delay_ms > 0 then
+                usleep(delay_ms * 1000)
             end
         end
 
