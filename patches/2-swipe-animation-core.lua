@@ -14,12 +14,9 @@
     2. the SwipeAnimation module: full-refresh / clearing decisions and the
        wipe animation itself (runSwipeAnimation), called from
        UIManager:_repaint after the new page is painted.
-    3. post-resume display warm-up on MTK Kobos: the display controller is
-       still cold after wake-up, so the first software wipe animation would
-       run in slow motion because every UI-waveform strip refresh blocks on
-       the still-cold controller. Right after resume we issue a few invisible
-       full-screen UI refreshes to warm the controller up, so the first page
-       turn animates normally at full speed.
+    3. Kobo MTK fence immediately before the wipe loop: drain a leftover
+       PARTIAL, or pay one AUTO+wait after a FULL, so the first strips are
+       not blocked by HWTCON serialization.
 
     Prefer original data sources, but trigger Screen:refreshFull / refreshPartial
     directly (because we are inside _repaint, where setDirty would be deferred
@@ -97,43 +94,6 @@ local ok, err = pcall(function()
     local ffi = require("ffi")
 
     local SwipeAnimation = {}
-
-    ---------------------------------------------------------------
-    --     Post-resume display warm-up on MTK Kobo
-    ---------------------------------------------------------------
-    if not UIManager._swipe_animation_resume_warmup_patched then
-        UIManager._swipe_animation_resume_warmup_patched = true
-
-        local orig_broadcastEvent = UIManager.broadcastEvent
-        function UIManager:broadcastEvent(ev)
-            local ret = orig_broadcastEvent(self, ev)
-            if ev and ev.handler == "onResume"
-                    and Device:isKobo() and Device:isMTK()
-                    and G_reader_settings:isTrue("swipe_animations") then
-                UIManager:scheduleIn(0.3, function()
-                    if Device.screen_saver_mode then
-                        return -- device went back to sleep meanwhile
-                    end
-                    local bb = Screen.bb
-                    if not bb then
-                        return
-                    end
-                    local warmup_w = bb:getWidth()
-                    local warmup_h = bb:getHeight()
-                    if warmup_w <= 0 or warmup_h <= 0 then
-                        return
-                    end
-                    -- Same refresh count as a portrait wipe animation, so the
-                    -- controller is exercised just as much as it was during
-                    -- the previously slow first turn.
-                    for _ = 1, 8 do
-                        Screen:refreshUI(0, 0, warmup_w, warmup_h)
-                    end
-                end)
-            end
-            return ret
-        end
-    end
 
     ---------------------------------------------------------------
     -- 2.1 Whether to skip the animation and perform a clearing refresh
@@ -389,6 +349,21 @@ local ok, err = pcall(function()
         -- Draw the previous page as the starting background
         Screen.bb:blitFrom(saved_bb, 0, 0, 0, 0, screen_w, screen_h)
 
+        -- Kobo MTK: leftover PARTIAL AUTO still serializes the first strip;
+        -- after a FULL, waitForLast is a no-op (dont_wait_for_marker == marker)
+        -- so pay one AUTO+wait here. Consecutive turns skip the extra refresh.
+        if Device:isKobo() and Device:isMTK() then
+            if Screen.refreshWaitForLast then
+                Screen:refreshWaitForLast()
+            end
+            if Screen.dont_wait_for_marker == Screen.marker then
+                Screen:refreshUI(0, 0, screen_w, screen_h)
+                if Screen.refreshWaitForLast then
+                    Screen:refreshWaitForLast()
+                end
+            end
+        end
+
         -- Animate page turn by progressively revealing vertical strips of the new page.
         for i = 1, nslots do
             local left, right
@@ -401,8 +376,6 @@ local ok, err = pcall(function()
                 right = edges[i + 1]
             end
             local strip_w = right - left
-            -- Sleep only after DU. UI already blocked on submission (MTK)
-            -- or is a slower waveform; extra usleep just makes it feel late.
             local use_fast = anim_refresh_mode == "fast"
             if strip_w > 0 then
                 Screen.bb:blitFrom(new_bb, left, 0, left, 0, strip_w, screen_h)
