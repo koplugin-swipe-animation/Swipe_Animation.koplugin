@@ -20,6 +20,9 @@
        the still-cold controller. Right after resume we issue a few invisible
        full-screen UI refreshes to warm the controller up, so the first page
        turn animates normally at full speed.
+    4. v4.1 + strip-loop rewrite only: snap interior cuts to
+       Screen.alignment_constraint (16 on Kobo MTK); UI-mode strips do not
+       usleep (Fast still uses the configured frame delay).
 
     Prefer original data sources, but trigger Screen:refreshFull / refreshPartial
     directly (because we are inside _repaint, where setDirty would be deferred
@@ -265,6 +268,28 @@ local ok, err = pcall(function()
     --     before the queued refreshes are executed). Handles the clearing /
     --     forced-full decisions and the strip animation.
     ---------------------------------------------------------------
+    -- Interior cuts snap to `align` (Screen.alignment_constraint, 16 on
+    -- Kobo MTK) so getBoundedRect does not expand neighbouring strips
+    -- into each other. Last edge stays the real width.
+    local function buildStripEdges(screen_w, steps, align)
+        local edges = {0}
+        local use_align = type(align) == "number" and align >= 2
+        for i = 1, steps - 1 do
+            local raw = screen_w * i / steps
+            local cut
+            if use_align then
+                cut = math.floor((raw + align / 2) / align) * align
+            else
+                cut = math.floor(raw)
+            end
+            if cut > edges[#edges] and cut < screen_w then
+                edges[#edges + 1] = cut
+            end
+        end
+        edges[#edges + 1] = screen_w
+        return edges
+    end
+
     function SwipeAnimation.runSwipeAnimation(self)
         local screen_w = Screen.bb:getWidth()
         local screen_h = Screen.bb:getHeight()
@@ -337,7 +362,6 @@ local ok, err = pcall(function()
 
         -- Allow user to choose "ui" or "fast" for the per-strip refreshes.
         local anim_refresh_mode = G_reader_settings:readSetting("swipe_animation_refresh_mode") or "ui"
-        local refresh_fn = anim_refresh_mode == "fast" and Screen.refreshFast or Screen.refreshUI
 
         -- Hoisted for slight efficiency in the animation loop
         local usleep = ffi and ffi.C and ffi.C.usleep
@@ -353,26 +377,33 @@ local ok, err = pcall(function()
             -- default to the forward direction instead of always sweeping one way.
             swipe_forward = true
         end
-        local prev_dx = 0
+        local edges = buildStripEdges(screen_w, steps, Screen.alignment_constraint)
+        local nslots = #edges - 1
 
         -- Draw the previous page as the starting background
         Screen.bb:blitFrom(saved_bb, 0, 0, 0, 0, screen_w, screen_h)
 
         -- Animate page turn by progressively revealing vertical strips of the new page.
-        for i = 1, steps do
-            local progress = i / steps
-            local dx = math.floor(screen_w * progress)
-            local strip_w = dx - prev_dx
-            if strip_w > 0 then
-                local strip_x = swipe_forward and (screen_w - dx) or prev_dx
-                -- Copy a vertical strip from the new page onto the current screen buffer
-                Screen.bb:blitFrom(new_bb, strip_x, 0, strip_x, 0, strip_w, screen_h)
-                refresh_fn(Screen, strip_x, 0, strip_w, screen_h)
+        for i = 1, nslots do
+            local left, right
+            if swipe_forward then
+                local idx = nslots - i + 1
+                left = edges[idx]
+                right = edges[idx + 1]
+            else
+                left = edges[i]
+                right = edges[i + 1]
             end
-            prev_dx = dx
-
-            -- Skip sleep on the last frame
-            if i < steps and usleep then
+            local strip_w = right - left
+            -- Sleep only after DU. UI already blocked on submission (MTK)
+            -- or is a slower waveform; extra usleep just makes it feel late.
+            local use_fast = anim_refresh_mode == "fast"
+            if strip_w > 0 then
+                Screen.bb:blitFrom(new_bb, left, 0, left, 0, strip_w, screen_h)
+                local refresh_fn = use_fast and Screen.refreshFast or Screen.refreshUI
+                refresh_fn(Screen, left, 0, strip_w, screen_h)
+            end
+            if i < nslots and usleep and use_fast then
                 usleep(delay_us)
             end
         end
