@@ -1,0 +1,219 @@
+name: 缺陷报告 / Bug report
+description: 翻页动画闪退、卡顿、残影、不生效等问题。Report a crash, stutter, ghosting, or missing animation.
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        请先阅读 [README 常见问题](https://github.com/koplugin-swipe-animation/Swipe_Animation.koplugin#常见问题)。
+
+        **不支持 Android。** Android 上的动画表现不佳，相关反馈一般不会处理。
+
+        需要 KOReader **2026.07.1 或更新**。从 V4.0 之前升级时，请先按 README 用 `restore-files` 还原系统文件，并删掉旧补丁。
+
+        Please read the [FAQ](https://github.com/koplugin-swipe-animation/Swipe_Animation.koplugin/blob/main/README_en.md#faq) first. Android is **not supported**. KOReader **2026.07.1+** is required.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 提交前 / Before submitting
+      options:
+        - label: 已搜索过现有 issue，没有重复 / I searched existing issues
+          required: true
+        - label: KOReader 版本 ≥ 2026.07.1
+          required: true
+        - label: 这不是 Android 设备上的问题 / This is not an Android device
+          required: true
+
+  - type: dropdown
+    id: device-family
+    attributes:
+      label: 设备类型 / Device family
+      options:
+        - Kindle
+        - Kobo
+        - 其他 Linux 墨水屏 / Other Linux e-ink
+        - 不确定 / Not sure
+    validations:
+      required: true
+
+  - type: input
+    id: device-model
+    attributes:
+      label: 设备型号 / Device model
+      description: 例如 Kobo Clara BW、Kindle Paperwhite 5、KPW4。
+      placeholder: Kobo Clara BW
+    validations:
+      required: true
+
+  - type: dropdown
+    id: mtk
+    attributes:
+      label: 是否 MTK 设备 / MTK device?
+      description: |
+        MTK 指联发科（MediaTek）芯片，很多人不知道自己是不是。不确定请直接选「不确定」，把上面的型号写清楚即可。
+
+        MTK = MediaTek SoC. If you are not sure, choose “Not sure” and fill in the model above.
+      options:
+        - "是 / Yes"
+        - "否 / No"
+        - 不确定（不清楚什么是 MTK 也选这个）/ Not sure
+    validations:
+      required: true
+
+  - type: input
+    id: koreader-version
+    attributes:
+      label: KOReader 版本 / KOReader version
+      description: 设置 → 关于。例如 `2026.07.2`。
+      placeholder: "2026.07.2"
+    validations:
+      required: true
+
+  - type: input
+    id: plugin-version
+    attributes:
+      label: 插件 / 补丁版本 / Plugin version
+      description: Release 标签或你安装的版本号，例如 `4.1`。
+      placeholder: "4.1"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install
+    attributes:
+      label: 安装方式 / How did you install
+      options:
+        - 完整安装（frontend + patches）/ Full install
+        - 仅 `2-pdf-animation.lua`（设备已有硬件翻页动画）/ PDF-only patch
+        - 不确定 / Not sure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: book-format
+    attributes:
+      label: 出问题的书籍格式 / Book format
+      options:
+        - EPUB / 可重排文本 / reflowable
+        - PDF
+        - DjVu
+        - CBZ
+        - 其他 / Other
+        - 多种格式都有 / Multiple formats
+    validations:
+      required: true
+
+  - type: dropdown
+    id: orientation
+    attributes:
+      label: 出问题时的屏幕方向 / Orientation when it happens
+      options:
+        - 竖屏 / Portrait
+        - 横屏 / Landscape
+        - 两种都有 / Both
+    validations:
+      required: true
+
+  - type: dropdown
+    id: refresh-mode
+    attributes:
+      label: 翻页动画刷新模式 / Swipe animation refresh mode
+      description: 设置 → 动作手势 → 翻页动画设置。
+      options:
+        - UI（默认）
+        - Fast
+        - 未改过 / Default / unknown
+    validations:
+      required: true
+
+  - type: input
+    id: delay
+    attributes:
+      label: 动画帧延迟 / Animation frame delay
+      description: 竖屏和横屏会分别记住。写出当前值，例如 `竖屏 默认 / 横屏 0 ms`。
+      placeholder: 竖屏 default / 横屏 0 ms
+    validations:
+      required: false
+
+  - type: dropdown
+    id: mild-refresh
+    attributes:
+      label: 轻度全局刷新 / Mild global refresh
+      options:
+        - 开 / On
+        - 关 / Off
+        - 不确定 / Not sure
+    validations:
+      required: true
+
+  - type: input
+    id: full-refresh-rate
+    attributes:
+      label: 完全刷新速率 / Full refresh rate
+      description: 设置 → 屏幕 → 墨水屏设置 → 完全刷新速率。每页闪黑白时尤其需要这项。
+      placeholder: "例如 / e.g. 6"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: symptom
+    attributes:
+      label: 主要现象 / Main symptom
+      options:
+        - 闪退 / Crash
+        - 没有「翻页动画」选项 / Missing “Page turn animations”
+        - 选项在，但没有动画 / Option present, no animation
+        - 卡顿 / 动画过慢 / Stutter or very slow wipe
+        - 残影明显 / Heavy ghosting
+        - 每翻一页黑白闪烁 / Black/white flash every turn
+        - 唤醒后第一次翻页异常 / First turn after wake is wrong
+        - 图文页异常、纯文字正常 / Breaks on image pages only
+        - 其他 / Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 问题描述 / What happened
+      description: 用自己的话写清楚。中英文均可。
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 复现步骤 / Steps to reproduce
+      placeholder: |
+        1. 打开某本 PDF / EPUB
+        2. 确认已勾选「翻页动画」
+        3. 从休眠唤醒后翻第一页
+        4. …
+    validations:
+      required: false
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望行为 / Expected behavior
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 崩溃日志 / Crash log
+      description: 闪退时请附上设备 `koreader/crash.log` 末尾相关片段。
+      render: text
+    validations:
+      required: false
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: 截图、录像或其他说明 / Screenshots, video, extra notes
+      description: 残影、条带刷新、卡顿类问题最好带一段短视频。
+    validations:
+      required: false

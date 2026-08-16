@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 常见问题 / FAQ
+    url: https://github.com/koplugin-swipe-animation/Swipe_Animation.koplugin#常见问题
+    about: 闪退、没有「翻页动画」选项、每页黑白闪烁等问题，请先看 README。
+  - name: English README
+    url: https://github.com/koplugin-swipe-animation/Swipe_Animation.koplugin/blob/main/README_en.md#faq
+    about: Crash, missing “Page turn animations”, or black/white flash on every turn.
