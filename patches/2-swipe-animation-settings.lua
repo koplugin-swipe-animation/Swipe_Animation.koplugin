@@ -236,10 +236,6 @@ O modo de atualização impacta diretamente na qualidade e no ghosting de cada f
     -- Simplified defaults come from UIManager.swipe_animation_defaults
     -- (the single source of truth for the animation tuning).
     local function getAutomaticSwipeAnimationDelayMs()
-        -- UI: 0 (pace with refresh ioctl only). Fast: 10/20ms.
-        if G_reader_settings:readSetting("swipe_animation_refresh_mode") ~= "fast" then
-            return 0
-        end
         local delay_defaults = (UIManager.swipe_animation_defaults or {}).delay_ms or {}
         if isLandscapeScreen() then
             return delay_defaults.landscape or 10

@@ -317,16 +317,11 @@ local ok, err = pcall(function()
         if delay_ms == nil then
             delay_ms = tonumber(G_reader_settings:readSetting("swipe_animation_delay_ms"))
         end
-        -- Unset: UI defaults to 0 (ioctl-paced). Fast keeps 10/20ms.
-        -- Explicit 0 also means no usleep.
+        -- Unset: 10/20ms for both UI and Fast. Explicit 0 means no usleep.
         if delay_ms == nil or delay_ms < 0 then
-            if anim_refresh_mode == "fast" then
-                delay_ms = is_landscape
-                    and (delay_defaults.landscape or 10)
-                    or  (delay_defaults.portrait or 20)
-            else
-                delay_ms = 0
-            end
+            delay_ms = is_landscape
+                and (delay_defaults.landscape or 10)
+                or  (delay_defaults.portrait or 20)
         end
 
         -- Hoisted for slight efficiency in the animation loop
