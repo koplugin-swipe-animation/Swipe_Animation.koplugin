@@ -42,18 +42,14 @@ local ok, err = pcall(function()
         ["Portrait"] = "竖屏",
         [ [[
 Enter the delay between animation frames, in milliseconds.
-
-0 = no extra pause (pace with each strip refresh).
-Lower values are faster but may cause more ghosting.
-Higher values are slower but usually look cleaner.
+0 = no extra pause (pace with strip refresh).
+Lower is faster, higher is slower.
 
 Current orientation: %1
 Current default: %2 ms]] ] = [[
 输入每一帧之间的延迟，单位为毫秒。
-
-0 = 不再额外停顿（节奏交给每次条带刷新）。
-数值越低，速度越快，但可能残影更明显。
-数值越高，速度越慢，但显示可能更干净。
+0 = 不再额外停顿（节奏交给条带刷新）。
+数值越低，速度越快，数值越高，速度越慢。
 
 当前保存方向：%1
 当前默认值：%2 毫秒]],
@@ -109,21 +105,17 @@ The refresh mode directly affects the quality and ghosting of each strip update 
         ["Portrait"] = "Modo retrato",
         [ [[
 Enter the delay between animation frames, in milliseconds.
-
-0 = no extra pause (pace with each strip refresh).
-Lower values are faster but may cause more ghosting.
-Higher values are slower but usually look cleaner.
+0 = no extra pause (pace with strip refresh).
+Lower is faster, higher is slower.
 
 Current orientation: %1
 Current default: %2 ms]] ] = [[
 Insira o intervalo entre quadros da animação, em milissegundos.
-
-0 = sem pausa extra (o ritmo fica a cargo de cada atualização).
-Valores menores são mais rápidos, mas podem gerar mais ghosting.
-Valores maiores são mais lentos, mas geralmente resultam em imagens mais limpas.
+0 = sem pausa extra (ritmo pela atualização das faixas).
+Menor é mais rápido, maior é mais lento.
 
 Orientação atual: %1
-Padrão da orientação atual: %2 ms]],
+Padrão atual: %2 ms]],
         [ [[
 Choose the refresh type used for each strip of the software swipe animation.
 
@@ -319,10 +311,8 @@ O modo de atualização impacta diretamente na qualidade e no ghosting de cada f
             input_type = "number",
             description = T(_([[
 Enter the delay between animation frames, in milliseconds.
-
-0 = no extra pause (pace with each strip refresh).
-Lower values are faster but may cause more ghosting.
-Higher values are slower but usually look cleaner.
+0 = no extra pause (pace with strip refresh).
+Lower is faster, higher is slower.
 
 Current orientation: %1
 Current default: %2 ms]]), orientation_label, default_delay_ms),
