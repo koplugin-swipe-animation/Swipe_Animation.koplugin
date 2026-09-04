@@ -228,6 +228,9 @@ local ok, err = pcall(function()
     -- Interior cuts snap to `align` (Screen.alignment_constraint, 16 on
     -- Kobo MTK) so getBoundedRect does not expand neighbouring strips
     -- into each other. Last edge stays the real width.
+    -- Kobo colour skips this (align is nil) and keeps pre-4.2 unaligned
+    -- cuts: HWTCON drops 1px from 16-aligned partials, which shows as
+    -- black CFA seams (#25); the old overlap covers that gap.
     local function buildStripEdges(screen_w, steps, align)
         local edges = {0}
         local use_align = type(align) == "number" and align >= 2
@@ -338,7 +341,11 @@ local ok, err = pcall(function()
             -- default to the forward direction instead of always sweeping one way.
             swipe_forward = true
         end
-        local edges = buildStripEdges(screen_w, steps, Screen.alignment_constraint)
+        local strip_align = Screen.alignment_constraint
+        if Device:isKobo() and Device:hasColorScreen() then
+            strip_align = nil
+        end
+        local edges = buildStripEdges(screen_w, steps, strip_align)
         local nslots = #edges - 1
 
         -- Draw the previous page as the starting background
