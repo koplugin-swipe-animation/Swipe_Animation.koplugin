@@ -318,6 +318,13 @@ A atualização periódica de limpeza e o tratamento de atualização total para
         return G_reader_settings:isTrue("swipe_animation_instant_mode")
     end
 
+    -- Enabled only when the wipe animation actually plays: the refresh mode
+    -- and frame delay items are meaningless in instant refresh mode.
+    local function isAnimationUiEnabled()
+        return G_reader_settings:isTrue("swipe_animations")
+            and not isInstantModeEnabled()
+    end
+
     local function toggleInstantMode()
         if isInstantModeEnabled() then
             G_reader_settings:delSetting("swipe_animation_instant_mode")
@@ -444,7 +451,7 @@ The periodic clearing refresh and image/chapter full-refresh handling still work
             {
                 text = _("Swipe animation refresh mode"),
                 enabled_func = function()
-                    return G_reader_settings:isTrue("swipe_animations")
+                    return isAnimationUiEnabled()
                 end,
                 help_text = _([[
 Choose the refresh type used for each strip of the software swipe animation.
@@ -491,7 +498,7 @@ Changes take effect immediately.]]),
                     return T(_("%1 animation frame delay: default %2 ms"), orientation_label, getAutomaticSwipeAnimationDelayMs())
                 end,
                 enabled_func = function()
-                    return G_reader_settings:isTrue("swipe_animations")
+                    return isAnimationUiEnabled()
                 end,
                 keep_menu_open = true,
                 callback = function(touchmenu_instance)
