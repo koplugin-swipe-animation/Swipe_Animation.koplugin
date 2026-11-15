@@ -111,6 +111,18 @@ The refresh mode directly affects the quality and ghosting of each strip update 
 调整软件翻页动画的速度（帧延迟）和画面更新刷新模式（UI / Fast）。
 
 刷新模式直接影响动画期间每条画面的更新质量与残影表现。]],
+        ["Instant refresh (no animation)"] = "极速刷新（无动画）",
+        [ [[
+• Checked: skip the page-turn animation entirely and refresh the new page instantly (fastest page turns).
+
+• Unchecked: play the wipe animation (delay and refresh mode settings apply).
+
+The periodic clearing refresh and image/chapter full-refresh handling still work when checked.]] ] = [[
+• 勾选：完全跳过翻页动画，整页瞬间刷新（翻页速度最快）。
+
+• 未勾选：播放擦除翻页动画（帧延迟和刷新模式设置生效）。
+
+勾选后，定时清屏刷新和图片/章节整页刷新逻辑仍然生效。]],
     }
     local pt_BR_fallback = {
         ["Animation frame delay"] = "Intervalo entre quadros da animação",
@@ -175,6 +187,18 @@ The refresh mode directly affects the quality and ghosting of each strip update 
 Ajusta a velocidade (intervalo de quadros) e o modo de atualização (Interface / Rápido) da animação de deslizar por software.
 
 O modo de atualização impacta diretamente na qualidade e no ghosting de cada faixa de atualização durante a animação.]],
+        ["Instant refresh (no animation)"] = "Atualização instantânea (sem animação)",
+        [ [[
+• Checked: skip the page-turn animation entirely and refresh the new page instantly (fastest page turns).
+
+• Unchecked: play the wipe animation (delay and refresh mode settings apply).
+
+The periodic clearing refresh and image/chapter full-refresh handling still work when checked.]] ] = [[
+• Marcado: ignora completamente a animação de virar página e atualiza a nova página instantaneamente (viradas de página mais rápidas).
+
+• Desmarcado: reproduz a animação de deslizar (as configurações de intervalo e modo de atualização são aplicadas).
+
+A atualização periódica de limpeza e o tratamento de atualização total para imagens/capítulos continuam funcionando quando marcado.]],
     }
 
     local function _(msgid)
@@ -286,6 +310,22 @@ O modo de atualização impacta diretamente na qualidade e no ghosting de cada f
             G_reader_settings:saveSetting(key, delay_ms)
         end
     end
+    -- ==================== Instant refresh (skip the animation entirely) ====================
+    -- When enabled, the wipe animation is skipped and the page is refreshed
+    -- instantly with the normal queued refresh (issue #34). The clearing /
+    -- forced-full logic still runs, so ghosting management is unaffected.
+    local function isInstantModeEnabled()
+        return G_reader_settings:isTrue("swipe_animation_instant_mode")
+    end
+
+    local function toggleInstantMode()
+        if isInstantModeEnabled() then
+            G_reader_settings:delSetting("swipe_animation_instant_mode")
+        else
+            G_reader_settings:saveSetting("swipe_animation_instant_mode", true)
+        end
+    end
+
     -- ==================== Mild global refresh for the independent counter ====================
     -- When enabled, the periodic clearing refresh (triggered by the independent
     -- counter) uses a partial refresh instead of a true full refresh.
@@ -378,6 +418,28 @@ Current default: %2 ms]]), orientation_label, default_delay_ms),
 
     local function buildSwipeAnimationSubItems()
         return {
+            -- Instant refresh toggle (no animation at all)
+            {
+                text = _("Instant refresh (no animation)"),
+                enabled_func = function()
+                    return G_reader_settings:isTrue("swipe_animations")
+                end,
+                checked_func = function()
+                    return isInstantModeEnabled()
+                end,
+                callback = function(touchmenu_instance)
+                    toggleInstantMode()
+                    if touchmenu_instance then
+                        touchmenu_instance:updateItems()
+                    end
+                end,
+                help_text = _([[
+• Checked: skip the page-turn animation entirely and refresh the new page instantly (fastest page turns).
+
+• Unchecked: play the wipe animation (delay and refresh mode settings apply).
+
+The periodic clearing refresh and image/chapter full-refresh handling still work when checked.]]),
+            },
             -- Refresh mode chooser
             {
                 text = _("Swipe animation refresh mode"),

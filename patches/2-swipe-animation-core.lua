@@ -38,11 +38,16 @@ local ok, err = pcall(function()
         -- but only once per repaint (beforePaint can be called once per dirty
         -- widget in the same repaint cycle). This is the "previous page" used
         -- by the wipe effect.
+        -- Instant refresh mode (swipe_animation_instant_mode) skips the copy:
+        -- runSwipeAnimation then hits its "no snapshot" early return and the
+        -- queued refreshes run normally, i.e. the page turns with zero
+        -- animation overhead (issue #34).
         local orig_beforePaint = Screen.beforePaint
         function Screen:beforePaint()
             if not self.painting then
                 self.painting = true
-                if self.swipe_animations then
+                if self.swipe_animations
+                    and not G_reader_settings:isTrue("swipe_animation_instant_mode") then
                     if self.saved_bb then self.saved_bb:free() end
                     self.saved_bb = self.bb:copy()
                 end

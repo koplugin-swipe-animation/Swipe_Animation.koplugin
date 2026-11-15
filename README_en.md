@@ -19,6 +19,7 @@ This patch brings fluid page turn animations to devices that lack native hardwar
   **Settings (⚙) → Gesture Manager → Swipe Animation Settings**, eliminating the need to edit Lua files manually
 * **New:** Customizable refresh mode with two options: **UI**, **Fast**
 * **New:** Mild Global Refresh option for an improved text-only reading experience.
+* **New:** Instant Refresh mode that skips the page-turn animation entirely for the fastest possible page turns.
 
 ## Upgrade Notes
 
@@ -59,6 +60,9 @@ Starting from **V4.0**, this plugin no longer depends on or modifies `ffi/frameb
 7. *(Optional)* Adjust global refresh mode:
    * Open **Settings (⚙) → Gesture Manager → Swipe Animation Settings**.
    * Enable or disable **Mild global refresh**. Long-press the option to view its description.
+8. *(Optional)* Enable instant refresh:
+   * Open **Settings (⚙) → Gesture Manager → Swipe Animation Settings**.
+   * Enable **Instant refresh (no animation)** to skip the page-turn animation entirely and refresh the new page instantly — the fastest page-turn speed (issue #34).
 
 ### Uninstallation
 
@@ -87,6 +91,7 @@ Settings (⚙)
 │   ├── Page turns
 │   │   └── ☑ Page turn animations
 │   └── Swipe animation settings
+│       ├── ☑ Instant refresh (no animation)
 │       ├── Swipe animation refresh mode
 │       │   ├── ○ UI refresh
 │       │   └── ○ Fast refresh
