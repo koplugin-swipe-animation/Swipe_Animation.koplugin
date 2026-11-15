@@ -302,6 +302,24 @@ local ok, err = pcall(function()
             return
         end
 
+        -- Instant refresh mode: skip the animation entirely and let the
+        -- queued refreshes run normally (issue #34). The standard page-turn
+        -- refresh is also promoted to FAST: the quickest e-ink waveform with
+        -- no invert flash; ghosting is handled by the periodic clearing
+        -- refresh (full refresh rate setting). Explicit "full" refreshes in
+        -- the queue are still honored as-is.
+        if G_reader_settings:isTrue("swipe_animation_instant_mode") then
+            if saved_bb then
+                saved_bb:free()
+            end
+            for _, refresh in ipairs(self._refresh_stack or {}) do
+                if refresh.mode == "partial" or refresh.mode == "ui" then
+                    refresh.mode = "fast"
+                end
+            end
+            return
+        end
+
         if not saved_bb then
             -- No pre-paint snapshot (beforePaint did not capture one): nothing
             -- to animate; the queued refreshes will run normally.

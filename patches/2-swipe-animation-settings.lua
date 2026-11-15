@@ -113,12 +113,12 @@ The refresh mode directly affects the quality and ghosting of each strip update 
 刷新模式直接影响动画期间每条画面的更新质量与残影表现。]],
         ["Instant refresh (no animation)"] = "极速刷新（无动画）",
         [ [[
-• Checked: skip the page-turn animation entirely and refresh the new page instantly (fastest page turns).
+• Checked: skip the page-turn animation entirely and refresh the new page with the FAST waveform — no invert flash, fastest page turns. Ghosting is handled by the periodic clearing refresh (adjustable via the full refresh rate setting).
 
 • Unchecked: play the wipe animation (delay and refresh mode settings apply).
 
 The periodic clearing refresh and image/chapter full-refresh handling still work when checked.]] ] = [[
-• 勾选：完全跳过翻页动画，整页瞬间刷新（翻页速度最快）。
+• 勾选：完全跳过翻页动画，整页以 FAST 波形瞬间刷新（不闪黑、速度最快，残影由定时清屏处理，可在完全刷新速率中调整）。
 
 • 未勾选：播放擦除翻页动画（帧延迟和刷新模式设置生效）。
 
@@ -189,12 +189,12 @@ Ajusta a velocidade (intervalo de quadros) e o modo de atualização (Interface 
 O modo de atualização impacta diretamente na qualidade e no ghosting de cada faixa de atualização durante a animação.]],
         ["Instant refresh (no animation)"] = "Atualização instantânea (sem animação)",
         [ [[
-• Checked: skip the page-turn animation entirely and refresh the new page instantly (fastest page turns).
+• Checked: skip the page-turn animation entirely and refresh the new page with the FAST waveform — no invert flash, fastest page turns. Ghosting is handled by the periodic clearing refresh (adjustable via the full refresh rate setting).
 
 • Unchecked: play the wipe animation (delay and refresh mode settings apply).
 
 The periodic clearing refresh and image/chapter full-refresh handling still work when checked.]] ] = [[
-• Marcado: ignora completamente a animação de virar página e atualiza a nova página instantaneamente (viradas de página mais rápidas).
+• Marcado: ignora completamente a animação de virar página e atualiza a nova página com a forma de onda FAST — sem flash invertido, viradas de página mais rápidas. O ghosting é tratado pela atualização periódica de limpeza (ajustável pela taxa de atualização total).
 
 • Desmarcado: reproduz a animação de deslizar (as configurações de intervalo e modo de atualização são aplicadas).
 
@@ -434,7 +434,7 @@ Current default: %2 ms]]), orientation_label, default_delay_ms),
                     end
                 end,
                 help_text = _([[
-• Checked: skip the page-turn animation entirely and refresh the new page instantly (fastest page turns).
+• Checked: skip the page-turn animation entirely and refresh the new page with the FAST waveform — no invert flash, fastest page turns. Ghosting is handled by the periodic clearing refresh (adjustable via the full refresh rate setting).
 
 • Unchecked: play the wipe animation (delay and refresh mode settings apply).
 
