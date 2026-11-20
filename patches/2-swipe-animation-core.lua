@@ -303,17 +303,20 @@ local ok, err = pcall(function()
         end
 
         -- Instant refresh mode: skip the animation entirely and let the
-        -- queued refreshes run normally (issue #34). The standard page-turn
-        -- refresh is also promoted to FAST: the quickest e-ink waveform with
-        -- no invert flash; ghosting is handled by the periodic clearing
-        -- refresh (full refresh rate setting). Explicit "full" refreshes in
-        -- the queue are still honored as-is.
+        -- queued refreshes run normally (issue #34). The page-turn refresh is
+        -- also promoted to FAST: the quickest e-ink waveform with no invert
+        -- flash; ghosting is handled by the periodic clearing refresh (full
+        -- refresh rate setting). Covers EPUB (partial/ui) and fixed-layout
+        -- documents like PDF (full), which otherwise request a slow flashing
+        -- full update on every page. Clearing / forced-full refreshes decided
+        -- above run directly and are NOT touched, so periodic full refreshes
+        -- and image/chapter boundaries still work.
         if G_reader_settings:isTrue("swipe_animation_instant_mode") then
             if saved_bb then
                 saved_bb:free()
             end
             for _, refresh in ipairs(self._refresh_stack or {}) do
-                if refresh.mode == "partial" or refresh.mode == "ui" then
+                if refresh.mode == "partial" or refresh.mode == "ui" or refresh.mode == "full" then
                     refresh.mode = "fast"
                 end
             end

@@ -63,7 +63,7 @@ Starting from **V4.0**, this plugin no longer depends on or modifies `ffi/frameb
 8. *(Optional)* Enable instant refresh:
    * Open **Settings (⚙) → Gesture Manager → Swipe Animation Settings**.
    * Enable **Instant refresh (no animation)** to skip the page-turn animation entirely and refresh the new page with the FAST waveform — the fastest page-turn speed (issue #34).
-   * Note: the **Swipe animation refresh mode** (UI / Fast) only affects the strip refreshes in animation mode; instant refresh always uses the FAST waveform.
+   * Note: the **Swipe animation refresh mode** (UI / Fast) only affects the strip refreshes in animation mode; instant refresh always uses the FAST waveform, including the full-page refresh requested by fixed-layout documents (PDF etc.). Periodic clearing refreshes are unaffected.
 
 ### Uninstallation
 
