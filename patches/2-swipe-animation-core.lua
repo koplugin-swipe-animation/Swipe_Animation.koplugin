@@ -121,9 +121,18 @@ local ok, err = pcall(function()
     -- 2.2 Perform the clearing refresh (supports mild global refresh)
     ---------------------------------------------------------------
     function SwipeAnimation.performClearing(self, screen_w, screen_h)
+        -- In instant mode the periodic clearing must not flash either: on
+        -- devices with full_refresh_count=1 this runs on *every* page and
+        -- would otherwise override the FAST promotion below with a full
+        -- refresh (issue #34). Forced full refreshes (images/chapter
+        -- boundaries) are handled separately and stay full.
+        local instant = G_reader_settings:isTrue("swipe_animation_instant_mode")
         local mild = G_reader_settings:isTrue("swipe_animation_mild_global_refresh")
 
-        if mild then
+        if instant then
+            Screen:refreshFast(0, 0, screen_w, screen_h)
+            logger.dbg("SwipeAnimation: fast clearing refresh (instant mode)")
+        elseif mild then
             Screen:refreshPartial(0, 0, screen_w, screen_h)
             logger.dbg("SwipeAnimation: mild (partial) clearing refresh")
         else
