@@ -38,11 +38,16 @@ local ok, err = pcall(function()
         -- but only once per repaint (beforePaint can be called once per dirty
         -- widget in the same repaint cycle). This is the "previous page" used
         -- by the wipe effect.
+        -- Instant refresh mode (swipe_animation_instant_mode) skips the copy:
+        -- runSwipeAnimation then hits its "no snapshot" early return and the
+        -- queued refreshes run normally, i.e. the page turns with zero
+        -- animation overhead (issue #34).
         local orig_beforePaint = Screen.beforePaint
         function Screen:beforePaint()
             if not self.painting then
                 self.painting = true
-                if self.swipe_animations then
+                if self.swipe_animations
+                    and not G_reader_settings:isTrue("swipe_animation_instant_mode") then
                     if self.saved_bb then self.saved_bb:free() end
                     self.saved_bb = self.bb:copy()
                 end
@@ -116,9 +121,18 @@ local ok, err = pcall(function()
     -- 2.2 Perform the clearing refresh (supports mild global refresh)
     ---------------------------------------------------------------
     function SwipeAnimation.performClearing(self, screen_w, screen_h)
+        -- In instant mode the periodic clearing must not flash either: on
+        -- devices with full_refresh_count=1 this runs on *every* page and
+        -- would otherwise override the FAST promotion below with a full
+        -- refresh (issue #34). Forced full refreshes (images/chapter
+        -- boundaries) are handled separately and stay full.
+        local instant = G_reader_settings:isTrue("swipe_animation_instant_mode")
         local mild = G_reader_settings:isTrue("swipe_animation_mild_global_refresh")
 
-        if mild then
+        if instant then
+            Screen:refreshFast(0, 0, screen_w, screen_h)
+            logger.dbg("SwipeAnimation: fast clearing refresh (instant mode)")
+        elseif mild then
             Screen:refreshPartial(0, 0, screen_w, screen_h)
             logger.dbg("SwipeAnimation: mild (partial) clearing refresh")
         else
@@ -293,6 +307,27 @@ local ok, err = pcall(function()
             end
             if saved_bb then
                 saved_bb:free()
+            end
+            return
+        end
+
+        -- Instant refresh mode: skip the animation entirely and let the
+        -- queued refreshes run normally (issue #34). The page-turn refresh is
+        -- also promoted to FAST: the quickest e-ink waveform with no invert
+        -- flash; ghosting is handled by the periodic clearing refresh (full
+        -- refresh rate setting). Covers EPUB (partial/ui) and fixed-layout
+        -- documents like PDF (full), which otherwise request a slow flashing
+        -- full update on every page. Clearing / forced-full refreshes decided
+        -- above run directly and are NOT touched, so periodic full refreshes
+        -- and image/chapter boundaries still work.
+        if G_reader_settings:isTrue("swipe_animation_instant_mode") then
+            if saved_bb then
+                saved_bb:free()
+            end
+            for _, refresh in ipairs(self._refresh_stack or {}) do
+                if refresh.mode == "partial" or refresh.mode == "ui" or refresh.mode == "full" then
+                    refresh.mode = "fast"
+                end
             end
             return
         end
